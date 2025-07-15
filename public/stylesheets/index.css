@@ -75,7 +75,7 @@ a:visited {
 }
 
 img:hover {
-    transform: scale(1.5);
+    transform: scale(1.01);
 }
 
 /* controlWrap */
@@ -111,8 +111,17 @@ img:hover {
     width: 300px;
 }
 
-.blue_plane {
-    margin: 0.5rem;
+.credit {
+    font-size: 1.2rem;
+}
+.credit a:hover .blue_plane {
+  transform: rotate(18deg);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.credit .blue_plane {
+    margin-top: 10px;;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media only screen and (min-width: 800px) {

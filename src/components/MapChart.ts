@@ -176,7 +176,7 @@ export class MapChart extends BaseChart {
       .attr('class', 'axisText')
       .attr('x', 5)
       .attr('y', 95)
-      .text('person');
+      .text('Tourists');
 
     // Legend for small screens
     const legendSmall = d3.select('.mapWrap')

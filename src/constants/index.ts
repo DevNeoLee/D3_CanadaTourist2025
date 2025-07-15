@@ -53,7 +53,7 @@ export const CHART_DIMENSIONS = {
   },
   bar: {
     width: 580,
-    height: 680,
+    height: 550,
     margin: { top: 10, right: 0, bottom: 190, left: 80 }
   },
   pie: {

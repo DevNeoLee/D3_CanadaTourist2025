@@ -169,15 +169,15 @@ export class BarChart extends BaseChart {
 
     // Y축 라벨
     chartGroup.append('text')
-      .attr('x', 0)
-      .attr('y', 15)
-      .text('Person')
+      .attr('x', -20)
+      .attr('y', 5)
+      .text('Tourists')
       .attr('class', 'axisText');
 
     // X축 라벨
     chartGroup.append('text')
-      .attr('x', '165')
-      .attr('y', this.dimensions.height + 120)
+      .attr('x', '365')
+      .attr('y', this.dimensions.height + 140)
       .text('Canadian Province')
       .attr('class', 'axisText');
   }
