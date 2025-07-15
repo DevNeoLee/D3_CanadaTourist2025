@@ -54,22 +54,22 @@ class App {
   }
 }
 
-// 애플리케이션 시작
+// Start application
 const app = new App();
 
-// DOM이 로드된 후 애플리케이션 시작
+// Start application after DOM is loaded
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => app.start());
 } else {
   app.start();
 }
 
-// 페이지 언로드 시 정리
+// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
   app.destroy();
 });
 
-// 개발 모드에서 전역 접근 허용
-if (import.meta.env.DEV) {
+// Allow global access in development mode
+if ((import.meta as any).env?.DEV) {
   (window as any).app = app;
 } 

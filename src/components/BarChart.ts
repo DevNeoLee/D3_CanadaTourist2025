@@ -30,7 +30,7 @@ export class BarChart extends BaseChart {
       this.drawLabels(chartGroup, data);
       this.drawAxes(chartGroup, data);
       this.drawTitle(chartGroup, data);
-      // transition은 이벤트 리스너 연결 후 별도로 적용
+      // Apply transition after connecting event listeners
       this.animateBars(bars, data);
     } catch (error) {
       console.error('Error rendering bar chart:', error);
@@ -70,7 +70,7 @@ export class BarChart extends BaseChart {
       .attr('width', barWidth)
       .attr('x', (d, i) => barWidth * i)
       .style('fill', (d, i) => this.colorScale(i + 1))
-      // transition 전에 이벤트 리스너 연결
+      // Connect event listeners before transition
       .on('pointerenter', function(event: PointerEvent, d: TouristData) {
         d3.select(this)
           .style('opacity', '0.4');
@@ -131,7 +131,7 @@ export class BarChart extends BaseChart {
   ): void {
     const { height } = this.dimensions;
 
-    // X축
+    // X-axis
     const xAxis = d3.axisBottom(this.xAxisScale);
     chartGroup.append('g')
       .attr('class', 'x_axis')
@@ -144,7 +144,7 @@ export class BarChart extends BaseChart {
       .attr('x', 8)
       .attr('y', -5);
 
-    // Y축
+    // Y-axis
     const yAxisScale = d3.scaleSqrt()
       .domain([1700000, 0])
       .range([0, height]);
@@ -160,21 +160,21 @@ export class BarChart extends BaseChart {
     chartGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
     data: TouristData[]
   ): void {
-    // 제목
+    // Title
     chartGroup.append('text')
       .attr('x', '131')
       .attr('y', '55')
       .text(`Provincial Visitors on ${data[0]?.REF_DATE || ''}`)
       .attr('class', 'subTitle');
 
-    // Y축 라벨
+    // Y-axis label
     chartGroup.append('text')
       .attr('x', -20)
       .attr('y', 5)
       .text('Tourists')
       .attr('class', 'axisText');
 
-    // X축 라벨
+    // X-axis label
     chartGroup.append('text')
       .attr('x', '365')
       .attr('y', this.dimensions.height + 140)

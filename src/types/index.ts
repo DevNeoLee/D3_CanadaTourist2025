@@ -64,7 +64,7 @@ export interface LoadingManager {
 export type Year = number;
 export type Month = number;
 
-// Window 객체 확장
+// Window object extension
 declare global {
   interface Window {
     loadingManager?: LoadingManager;

@@ -22,7 +22,7 @@ export class DashboardController {
   }
 
   /**
-   * 로딩 진행률 업데이트
+   * Update loading progress
    */
   private updateLoadingProgress(progress: number): void {
     const loadingManager = window.loadingManager;
@@ -32,7 +32,7 @@ export class DashboardController {
   }
 
   /**
-   * 로딩 완료 처리
+   * Handle loading completion
    */
   private hideLoading(): void {
     const loadingManager = window.loadingManager;
@@ -42,29 +42,29 @@ export class DashboardController {
   }
 
   /**
-   * 대시보드 초기화
+   * Initialize dashboard
    */
   public async initialize(): Promise<void> {
     try {
       this.updateLoadingProgress(10);
       
-      // 데이터 로딩
+      // Load data
       await this.dataService.loadData();
       this.updateLoadingProgress(40);
       
-      // 이벤트 리스너 설정
+      // Setup event listeners
       this.setupEventListeners();
       this.updateLoadingProgress(60);
       
-      // 차트 업데이트
+      // Update charts
       await this.updateCharts();
       this.updateLoadingProgress(90);
       
-      // 정보 표시 업데이트
+      // Update info display
       this.updateInfoDisplay();
       this.updateLoadingProgress(100);
       
-      // 로딩 완료
+      // Loading complete
       setTimeout(() => {
         this.hideLoading();
       }, 500);
@@ -77,14 +77,14 @@ export class DashboardController {
   }
 
   /**
-   * 차트 업데이트
+   * Update charts
    */
   private async updateCharts(): Promise<void> {
     try {
       const sortedData = this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
       const totalVisitors = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
 
-      // 모든 차트를 병렬로 렌더링
+      // Render all charts in parallel
       await Promise.all([
         this.mapChart.render(sortedData),
         this.barChart.render(sortedData),
@@ -98,7 +98,7 @@ export class DashboardController {
   }
 
   /**
-   * 정보 표시 업데이트
+   * Update info display
    */
   private updateInfoDisplay(): void {
     const totalVisitors = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
@@ -113,10 +113,10 @@ export class DashboardController {
   }
 
   /**
-   * 이벤트 리스너 설정
+   * Setup event listeners
    */
   private setupEventListeners(): void {
-    // 연도 선택 이벤트
+    // Year selection event
     const yearSelect = document.querySelector('.select') as HTMLSelectElement;
     if (yearSelect) {
       yearSelect.addEventListener('change', (event) => {
@@ -127,14 +127,14 @@ export class DashboardController {
       });
     }
 
-    // 월 슬라이더 이벤트
+    // Month slider event
     const monthSlider = document.querySelector('.slider') as HTMLInputElement;
     if (monthSlider) {
       monthSlider.addEventListener('change', (event) => {
         const target = event.target as HTMLInputElement;
         this.currentMonth = parseInt(target.value);
         
-        // 월 표시 업데이트
+        // Update month display
         const monthDisplay = document.querySelector('.monthDisplay');
         if (monthDisplay) {
           monthDisplay.textContent = MONTHS[this.currentMonth - 1];
@@ -145,21 +145,21 @@ export class DashboardController {
       });
     }
 
-    // 윈도우 리사이즈 이벤트
+    // Window resize event
     window.addEventListener('resize', this.debounce(() => {
       this.updateCharts();
     }, 250));
   }
 
   /**
-   * 숫자 포맷팅
+   * Format number
    */
   private formatNumber(value: number): string {
     return new Intl.NumberFormat().format(value);
   }
 
   /**
-   * 디바운스 유틸리티
+   * Debounce utility
    */
   private debounce<T extends (...args: any[]) => any>(
     func: T,
@@ -173,16 +173,16 @@ export class DashboardController {
   }
 
   /**
-   * 에러 표시
+   * Show error
    */
   private showError(message: string): void {
-    // 에러 메시지를 표시하는 로직
+    // Logic to display error message
     console.error(message);
-    // TODO: 사용자에게 에러 메시지 표시 UI 구현
+    // TODO: Implement error message display UI
   }
 
   /**
-   * 대시보드 정리
+   * Cleanup dashboard
    */
   public destroy(): void {
     this.mapChart.destroy();
