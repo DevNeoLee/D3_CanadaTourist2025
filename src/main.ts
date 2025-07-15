@@ -9,9 +9,7 @@ class App {
 
   public async start(): Promise<void> {
     try {
-      console.log('🚀 Starting Canada Tourist Visualization Dashboard...');
       await this.dashboard.initialize();
-      console.log('✅ Dashboard initialized successfully');
     } catch (error) {
       console.error('❌ Failed to start application:', error);
       this.showErrorMessage('Failed to load the application. Please refresh the page.');

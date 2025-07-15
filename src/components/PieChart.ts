@@ -15,13 +15,13 @@ export class PieChart extends BaseChart {
     this.radius = 100;
   }
 
-  public render(data: TouristData[], totalVisitors: number): void {
+  public async render(data: TouristData[], total: number): Promise<void> {
     try {
       this.clear();
       
       const chartGroup = this.getChartGroup();
-      const { pieces } = this.drawPie(chartGroup, data, totalVisitors);
-      this.animatePie(pieces, data, totalVisitors);
+      const { pieces } = this.drawPie(chartGroup, data, total);
+      this.animatePie(pieces, data, total);
     } catch (error) {
       console.error('Error rendering pie chart:', error);
     }
