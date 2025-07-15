@@ -3,7 +3,7 @@ import { DataService } from '../services/DataService';
 import { MapChart } from '../components/MapChart';
 import { BarChart } from '../components/BarChart';
 import { PieChart } from '../components/PieChart';
-import { Year, Month } from '../types';
+import { Year, Month, LoadingManager } from '../types';
 import { MONTHS } from '../constants';
 
 export class DashboardController {
@@ -22,17 +22,57 @@ export class DashboardController {
   }
 
   /**
+   * 로딩 진행률 업데이트
+   */
+  private updateLoadingProgress(progress: number): void {
+    const loadingManager = window.loadingManager;
+    if (loadingManager && typeof loadingManager.updateProgress === 'function') {
+      loadingManager.updateProgress(progress);
+    }
+  }
+
+  /**
+   * 로딩 완료 처리
+   */
+  private hideLoading(): void {
+    const loadingManager = window.loadingManager;
+    if (loadingManager && typeof loadingManager.hide === 'function') {
+      loadingManager.hide();
+    }
+  }
+
+  /**
    * 대시보드 초기화
    */
   public async initialize(): Promise<void> {
     try {
+      this.updateLoadingProgress(10);
+      
+      // 데이터 로딩
       await this.dataService.loadData();
+      this.updateLoadingProgress(40);
+      
+      // 이벤트 리스너 설정
       this.setupEventListeners();
+      this.updateLoadingProgress(60);
+      
+      // 차트 업데이트
       await this.updateCharts();
+      this.updateLoadingProgress(90);
+      
+      // 정보 표시 업데이트
       this.updateInfoDisplay();
+      this.updateLoadingProgress(100);
+      
+      // 로딩 완료
+      setTimeout(() => {
+        this.hideLoading();
+      }, 500);
+
     } catch (error) {
       console.error('Failed to initialize dashboard:', error);
       this.showError('Failed to load data. Please refresh the page.');
+      this.hideLoading();
     }
   }
 

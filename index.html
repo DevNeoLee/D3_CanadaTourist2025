@@ -113,37 +113,208 @@
     </footer>
     
     <!-- Loading indicator -->
-    <div id="loading" style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.9);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        font-family: 'Blinker', sans-serif;
-    ">
-        <div style="text-align: center;">
-            <div style="
-                width: 50px;
-                height: 50px;
-                border: 5px solid #f3f3f3;
-                border-top: 5px solid #3498db;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 20px;
-            "></div>
-            <p>Loading Canada Tourist Data...</p>
+    <div id="loading" class="loading-overlay">
+        <div class="loading-container">
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+            <div class="loading-content">
+                <div class="loading-icon">
+
+                </div>
+                <h2 class="loading-title">Canada Tourist Data</h2>
+                <p class="loading-subtitle">Loading...</p>
+                <div class="loading-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <span class="progress-text">0%</span>
+                </div>
+            </div>
         </div>
     </div>
     
     <style>
-        @keyframes spin {
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-family: 'Blinker', sans-serif;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .loading-spinner {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-radius: 50%;
+            animation: spinner-rotate 2s linear infinite;
+        }
+
+        .spinner-ring:nth-child(1) {
+            border-top-color: #1864aa;
+            animation-delay: 0s;
+        }
+
+        .spinner-ring:nth-child(2) {
+            border-right-color: #4a58dd;
+            animation-delay: 0.5s;
+        }
+
+        .spinner-ring:nth-child(3) {
+            border-bottom-color: #27d7c4;
+            animation-delay: 1s;
+        }
+
+        .spinner-ring:nth-child(4) {
+            border-left-color: #4df884;
+            animation-delay: 1.5s;
+        }
+
+        @keyframes spinner-rotate {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        .loading-icon {
+            margin-bottom: 1.5rem;
+            animation: icon-float 3s ease-in-out infinite;
+        }
+
+        @keyframes icon-float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .loading-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1864aa;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #1864aa, #4a58dd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .loading-subtitle {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        .loading-progress {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1864aa, #4a58dd, #27d7c4);
+            border-radius: 3px;
+            width: 0%;
+            animation: progress-animate 3s ease-in-out infinite;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes progress-animate {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: #1864aa;
+            font-weight: 500;
+            min-width: 40px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 480px) {
+            .loading-container {
+                padding: 2rem;
+                margin: 1rem;
+            }
+
+            .loading-title {
+                font-size: 1.5rem;
+            }
+
+            .loading-spinner {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        /* Fade out animation */
+        .loading-overlay.fade-out {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
         }
     </style>
     
@@ -151,13 +322,97 @@
     <script type="module" src="./src/main.ts"></script>
     
     <script>
-        // Hide loading indicator when page is loaded
-        window.addEventListener('load', () => {
-            const loading = document.getElementById('loading');
-            if (loading) {
-                loading.style.display = 'none';
+        // Enhanced loading functionality
+        class LoadingManager {
+            constructor() {
+                this.loadingElement = document.getElementById('loading');
+                this.progressFill = document.querySelector('.progress-fill');
+                this.progressText = document.querySelector('.progress-text');
+                this.currentProgress = 0;
+                this.targetProgress = 0;
+                this.isLoading = true;
             }
+
+            // Simulate loading progress
+            updateProgress(progress) {
+                this.targetProgress = Math.min(progress, 100);
+                
+                if (!this.isLoading) return;
+
+                const animate = () => {
+                    if (this.currentProgress < this.targetProgress) {
+                        this.currentProgress += 2;
+                        this.updateProgressDisplay();
+                        
+                        if (this.currentProgress < this.targetProgress) {
+                            requestAnimationFrame(animate);
+                        }
+                    }
+                };
+                
+                animate();
+            }
+
+            updateProgressDisplay() {
+                if (this.progressFill) {
+                    this.progressFill.style.width = `${this.currentProgress}%`;
+                }
+                if (this.progressText) {
+                    this.progressText.textContent = `${Math.round(this.currentProgress)}%`;
+                }
+            }
+
+            hide() {
+                if (!this.loadingElement) return;
+                
+                this.isLoading = false;
+                this.updateProgress(100);
+                
+                // Wait for progress to complete, then fade out
+                setTimeout(() => {
+                    this.loadingElement.classList.add('fade-out');
+                    
+                    setTimeout(() => {
+                        if (this.loadingElement) {
+                            this.loadingElement.style.display = 'none';
+                        }
+                    }, 500);
+                }, 500);
+            }
+        }
+
+        // Initialize loading manager
+        const loadingManager = new LoadingManager();
+        
+        // Make loading manager globally accessible
+        window.loadingManager = loadingManager;
+
+        // Simulate loading stages
+        const simulateLoading = () => {
+            // Data loading simulation
+            setTimeout(() => loadingManager.updateProgress(20), 300);
+            setTimeout(() => loadingManager.updateProgress(40), 800);
+            setTimeout(() => loadingManager.updateProgress(60), 1200);
+            setTimeout(() => loadingManager.updateProgress(80), 1600);
+            setTimeout(() => loadingManager.updateProgress(95), 2000);
+        };
+
+        // Start loading simulation
+        simulateLoading();
+
+        // Hide loading when page is fully loaded
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                loadingManager.hide();
+            }, 500);
         });
+
+        // Fallback: hide loading after 5 seconds maximum
+        setTimeout(() => {
+            if (loadingManager.isLoading) {
+                loadingManager.hide();
+            }
+        }, 5000);
     </script>
 </body>
 </html>

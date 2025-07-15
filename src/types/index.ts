@@ -56,5 +56,17 @@ export interface ChartDimensions {
   };
 }
 
+export interface LoadingManager {
+  updateProgress(progress: number): void;
+  hide(): void;
+}
+
 export type Year = number;
-export type Month = number; 
+export type Month = number;
+
+// Window 객체 확장
+declare global {
+  interface Window {
+    loadingManager?: LoadingManager;
+  }
+} 
