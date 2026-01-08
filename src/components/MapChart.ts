@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import { TouristData, CityData, MapData } from '../types';
+import { TouristData, CityData, MapData, ProvinceData } from '../types';
 import { BaseChart } from './BaseChart';
 import { MAP_COLOR_SCALE, MAP_PROJECTION_CONFIG, CHART_DIMENSIONS } from '../constants';
 
@@ -24,21 +24,17 @@ export class MapChart extends BaseChart {
     try {
       this.clear();
       
-      // Add Northwest Territories data (keep original logic)
-      const dataWithNWT = [...data, { 
-        REF_DATE: data[0]?.REF_DATE || '', 
-        GEO: "Northwest Territories", 
-        VALUE: "0",
-        'Traveller characteristics': '',
-        'Seasonal adjustment': ''
-      }];
-
-      // Sort in original order
-      const dataSorted = [
-        dataWithNWT[9], dataWithNWT[4], dataWithNWT[11], dataWithNWT[1], 
-        dataWithNWT[7], dataWithNWT[10], dataWithNWT[6], dataWithNWT[5], 
-        dataWithNWT[3], dataWithNWT[12], dataWithNWT[8], dataWithNWT[0], dataWithNWT[2]
-      ];
+      // Add Northwest Territories data if not present
+      const hasNWT = data.some(d => d.GEO === "Northwest Territories");
+      const dataWithNWT = hasNWT 
+        ? data 
+        : [...data, { 
+            REF_DATE: data[0]?.REF_DATE || '', 
+            GEO: "Northwest Territories", 
+            VALUE: "0",
+            'Traveller characteristics': '',
+            'Seasonal adjustment': ''
+          }];
 
       const chartGroup = this.getChartGroup();
       
@@ -52,9 +48,23 @@ export class MapChart extends BaseChart {
 
       if (!mapData) throw new Error('Failed to load map data');
 
-      // Draw map
-      const paths = this.drawMap(chartGroup, mapData, dataSorted);
-      this.addMapEvents(paths, dataSorted);
+      // Create a lookup map for tourist data by province name
+      const dataMap = new Map<string, TouristData>();
+      dataWithNWT.forEach(item => {
+        dataMap.set(item.GEO, item);
+      });
+
+      // Log warning if any GeoJSON provinces don't have matching data
+      mapData.features.forEach(feature => {
+        const provinceName = (feature.properties as any).PRENAME || feature.properties.name;
+        if (!dataMap.has(provinceName)) {
+          console.warn(`No tourist data found for province: ${provinceName}`);
+        }
+      });
+
+      // Draw map with proper data matching
+      const paths = this.drawMap(chartGroup, mapData, dataMap);
+      this.addMapEvents(paths);
       
       // Draw cities
       this.drawCities(chartGroup, cities);
@@ -67,40 +77,83 @@ export class MapChart extends BaseChart {
     }
   }
 
+  /**
+   * Draw map with proper province-to-data matching
+   * Uses province name from GeoJSON properties to match with tourist data
+   * GeoJSON uses PRENAME (English name) for province names
+   */
   private drawMap(
     chartGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
     mapData: MapData,
-    data: TouristData[]
-  ): d3.Selection<SVGPathElement, TouristData, SVGGElement, unknown> {
-    const provinces = chartGroup.selectAll('g')
-      .data(mapData.features)
+    dataMap: Map<string, TouristData>
+  ): d3.Selection<SVGPathElement, { feature: ProvinceData; data: TouristData | null }, SVGGElement, unknown> {
+    // Create combined data structure with both feature and tourist data
+    const combinedData = mapData.features.map(feature => {
+      // GeoJSON uses PRENAME for English province name, fallback to name if not available
+      const provinceName = (feature.properties as any).PRENAME || feature.properties.name;
+      const touristData = dataMap.get(provinceName) || null;
+      return { feature, data: touristData };
+    });
+
+    // Bind data to province groups
+    const provinces = chartGroup.selectAll('g.province')
+      .data(combinedData, (d: { feature: ProvinceData; data: TouristData | null }) => {
+        const provinceName = (d.feature.properties as any).PRENAME || d.feature.properties.name;
+        return provinceName;
+      })
       .enter()
       .append('g')
       .attr('class', 'province');
 
-    // Draw map boundaries
+    // Draw map boundaries with matched data - paths inherit data from parent groups
     const paths = provinces.append('path')
-      .attr('d', this.path)
+      .attr('d', d => this.path(d.feature))
       .attr('class', 'path')
       .attr('fill', 'white')
-      .data(data)
-      .style('fill', (d: TouristData) => this.colorScale(parseInt(d.VALUE)));
+      .style('fill', d => {
+        if (d.data) {
+          const value = parseInt(d.data.VALUE);
+          return this.colorScale(value);
+        }
+        return '#ffffff'; // Default white for provinces without data
+      })
+      .style('stroke', '#000')
+      .style('stroke-width', '0.5px')
+      .style('cursor', 'pointer'); // Add pointer cursor for better UX
 
     return paths;
   }
 
+  /**
+   * Add interactive events to map paths
+   * Uses arrow functions to properly bind 'this' context
+   */
   private addMapEvents(
-    paths: d3.Selection<SVGPathElement, TouristData, SVGGElement, unknown>,
-    data: TouristData[]
+    paths: d3.Selection<SVGPathElement, { feature: ProvinceData; data: TouristData | null }, SVGGElement, unknown>
   ): void {
+    // Store reference to 'this' for use in event handlers
+    const self = this;
+    
     paths
-      .on('pointerenter', function(event: PointerEvent, d: TouristData) {
-        const content = (this as any).getTooltipContent(d, 'Province');
-        (this as any).tooltip.show(content, event.pageX - 100, event.pageY - 120);
-      }.bind(this))
-      .on('pointerleave', function() {
-        (this as any).tooltip.hide();
-      }.bind(this));
+      .on('pointerenter', function(event: PointerEvent, d) {
+        // Change opacity on hover for visual feedback
+        d3.select(this)
+          .style('opacity', '0.7')
+          .style('stroke-width', '2px');
+        
+        if (d.data) {
+          const content = self.getTooltipContent(d.data, 'Province');
+          self.tooltip.show(content, event.pageX - 100, event.pageY - 120);
+        }
+      })
+      .on('pointerleave', function(event: PointerEvent, d) {
+        // Restore original styling
+        d3.select(this)
+          .style('opacity', '1')
+          .style('stroke-width', '0.5px');
+        
+        self.tooltip.hide();
+      });
   }
 
   private drawCities(
