@@ -136,10 +136,9 @@ export class MapChart extends BaseChart {
     
     paths
       .on('pointerenter', function(event: PointerEvent, d) {
-        // Change opacity on hover for visual feedback
+        // Change opacity on hover for subtle visual feedback
         d3.select(this)
-          .style('opacity', '0.7')
-          .style('stroke-width', '2px');
+          .style('opacity', '0.7');
         
         if (d.data) {
           const content = self.getTooltipContent(d.data, 'Province');
@@ -147,10 +146,9 @@ export class MapChart extends BaseChart {
         }
       })
       .on('pointerleave', function(event: PointerEvent, d) {
-        // Restore original styling
+        // Restore original opacity
         d3.select(this)
-          .style('opacity', '1')
-          .style('stroke-width', '0.5px');
+          .style('opacity', '1');
         
         self.tooltip.hide();
       });
