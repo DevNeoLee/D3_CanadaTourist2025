@@ -1,23 +1,13 @@
-import * as d3 from 'd3';
 import { TouristData, Year, Month, ApiResponse, ApiProvinceData } from '../types';
 import { DataProcessor } from '../utils/dataProcessor';
 
-/**
- * Data source mode: 'csv' for static file, 'api' for server API
- */
-type DataSourceMode = 'csv' | 'api';
-
 export class DataService {
   private static instance: DataService;
-  private rawData: TouristData[] = [];
   private filteredData: TouristData[] = [];
-  private dataSourceMode: DataSourceMode;
   private apiBaseUrl: string;
   private cache: Map<string, TouristData[]> = new Map();
 
   private constructor() {
-    // Determine data source mode from environment or default to 'csv'
-    this.dataSourceMode = (import.meta.env?.VITE_DATA_SOURCE as DataSourceMode) || 'csv';
     this.apiBaseUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001';
   }
 
@@ -32,27 +22,12 @@ export class DataService {
   }
 
   /**
-   * Load initial data
-   * Uses CSV or API based on dataSourceMode
+   * Load initial data from API
+   * Loads default data (2010-07) on initialization
    */
   public async loadData(): Promise<void> {
-    if (this.dataSourceMode === 'api') {
-      // API mode: Load default data (2010-07)
-      await this.loadDataFromAPI(10, 7);
-    } else {
-      // CSV mode: Load all data from file
-      try {
-        this.rawData = await d3.csv<TouristData>('data/travel_province_data.csv');
-        this.filteredData = DataProcessor.filterRelevantData(this.rawData);
-        
-        if (!DataProcessor.validateData(this.filteredData)) {
-          throw new Error('Invalid data format');
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-        throw error;
-      }
-    }
+    // Load default data (2010-07)
+    await this.loadDataFromAPI(10, 7);
   }
 
   /**
@@ -103,15 +78,11 @@ export class DataService {
 
   /**
    * Get data for a specific year and month
-   * In API mode, fetches from API if not cached
+   * Fetches from API if not cached
    */
   public async getMonthlyData(year: Year, month: Month): Promise<TouristData[]> {
-    if (this.dataSourceMode === 'api') {
-      await this.loadDataFromAPI(year, month);
-      return this.filteredData;
-    } else {
-      return DataProcessor.getMonthlyData(this.filteredData, year, month);
-    }
+    await this.loadDataFromAPI(year, month);
+    return this.filteredData;
   }
 
   /**
@@ -135,13 +106,6 @@ export class DataService {
    */
   public isDataLoaded(): boolean {
     return this.filteredData.length > 0;
-  }
-
-  /**
-   * Access raw data (read-only)
-   */
-  public getRawData(): readonly TouristData[] {
-    return this.rawData;
   }
 
   /**
