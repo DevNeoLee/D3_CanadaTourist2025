@@ -8,7 +8,19 @@ export class DataService {
   private cache: Map<string, TouristData[]> = new Map();
 
   private constructor() {
-    this.apiBaseUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001';
+    // Use environment variable or default to localhost for development
+    // In production, VITE_API_URL must be set in Vercel environment variables
+    const envUrl = import.meta.env?.VITE_API_URL;
+    if (envUrl) {
+      this.apiBaseUrl = envUrl;
+    } else if (import.meta.env?.DEV) {
+      // Development fallback
+      this.apiBaseUrl = 'http://localhost:3001';
+    } else {
+      // Production fallback - should not happen if env var is set
+      console.warn('VITE_API_URL not set. API calls may fail.');
+      this.apiBaseUrl = '/api'; // Relative path fallback
+    }
   }
 
   /**

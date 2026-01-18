@@ -5,7 +5,7 @@ export default defineConfig({
   publicDir: 'public',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'development', // Only sourcemaps in dev
     rollupOptions: {
       output: {
         manualChunks(id) {
