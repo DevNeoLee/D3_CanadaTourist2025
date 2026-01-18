@@ -64,6 +64,24 @@ export interface LoadingManager {
 export type Year = number;
 export type Month = number;
 
+/**
+ * API response types
+ */
+export interface ApiProvinceData {
+  ref_date: string;
+  year: number;
+  month: number;
+  geo: string;
+  value: number;
+}
+
+export interface ApiResponse {
+  year: number;
+  month: number;
+  provinces: ApiProvinceData[];
+  total: number;
+}
+
 // Window object extension
 declare global {
   interface Window {
