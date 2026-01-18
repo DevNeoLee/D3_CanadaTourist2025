@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.js",
     "lint:fix": "eslint src --ext .ts,.js --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "migrate:db": "node scripts/migrate-to-sqlite.js"
   },
   "keywords": [
     "d3",
@@ -30,7 +31,9 @@
   },
   "homepage": "https://github.com/DevNeoLee/DataVisualization4#readme",
   "dependencies": {
-    "d3": "^7.8.5"
+    "d3": "^7.8.5",
+    "better-sqlite3": "^9.2.2",
+    "csv-parse": "^5.5.3"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
