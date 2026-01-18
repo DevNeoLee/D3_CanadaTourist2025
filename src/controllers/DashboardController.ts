@@ -61,7 +61,7 @@ export class DashboardController {
       this.updateLoadingProgress(90);
       
       // Update info display
-      this.updateInfoDisplay();
+      await this.updateInfoDisplay();
       this.updateLoadingProgress(100);
       
       // Loading complete
@@ -81,8 +81,8 @@ export class DashboardController {
    */
   private async updateCharts(): Promise<void> {
     try {
-      const sortedData = this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
-      const totalVisitors = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
+      const sortedData = await this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
+      const totalVisitors = await this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
 
       // Render all charts in parallel
       await Promise.all([
@@ -100,8 +100,8 @@ export class DashboardController {
   /**
    * Update info display
    */
-  private updateInfoDisplay(): void {
-    const totalVisitors = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
+  private async updateInfoDisplay(): Promise<void> {
+    const totalVisitors = await this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
     const monthName = MONTHS[this.currentMonth - 1];
     const year = 2000 + this.currentYear;
 
@@ -119,11 +119,11 @@ export class DashboardController {
     // Year selection event
     const yearSelect = document.querySelector('.select') as HTMLSelectElement;
     if (yearSelect) {
-      yearSelect.addEventListener('change', (event) => {
+      yearSelect.addEventListener('change', async (event) => {
         const target = event.target as HTMLSelectElement;
         this.currentYear = parseInt(target.value);
-        this.updateCharts();
-        this.updateInfoDisplay();
+        await this.updateCharts();
+        await this.updateInfoDisplay();
       });
     }
 
@@ -140,8 +140,9 @@ export class DashboardController {
           monthDisplay.textContent = MONTHS[this.currentMonth - 1];
         }
 
-        this.updateCharts();
-        this.updateInfoDisplay();
+        this.updateCharts().then(() => {
+          this.updateInfoDisplay();
+        });
       });
     }
 
