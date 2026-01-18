@@ -8,6 +8,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import compression from 'compression';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+app.use(compression()); // Enable Gzip compression for all responses
 app.use(cors()); // Enable CORS for frontend
 app.use(express.json());
 

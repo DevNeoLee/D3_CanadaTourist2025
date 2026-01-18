@@ -1,10 +1,11 @@
-import * as d3 from 'd3';
+import { select, Selection } from 'd3-selection';
+import 'd3-transition'; // Extend selection with transition methods
 
 export class Tooltip {
-  private element: d3.Selection<HTMLDivElement, unknown, null, undefined>;
+  private element: Selection<HTMLDivElement, unknown, null, undefined>;
 
   constructor() {
-    this.element = d3.select('body')
+    this.element = select('body')
       .append('div')
       .attr('class', 'tooltip')
       .style('opacity', 0)

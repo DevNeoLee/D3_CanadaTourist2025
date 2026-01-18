@@ -1,21 +1,26 @@
-import * as d3 from 'd3';
+import { select, Selection } from 'd3-selection';
+import { csv, json } from 'd3-fetch';
+import { geoMercator, GeoProjection, geoPath, GeoPath } from 'd3-geo';
+import { scaleThreshold, ScaleThreshold } from 'd3-scale';
 import { TouristData, CityData, MapData, ProvinceData } from '../types';
 import { BaseChart } from './BaseChart';
 import { MAP_COLOR_SCALE, MAP_PROJECTION_CONFIG, CHART_DIMENSIONS } from '../constants';
 
 export class MapChart extends BaseChart {
-  private projection: d3.GeoProjection;
-  private path: d3.GeoPath<any, any>;
-  private colorScale: d3.ScaleThreshold<number, string>;
+  private projection: GeoProjection;
+  private path: GeoPath<any, any>;
+  private colorScale: ScaleThreshold<number, string>;
+  private mapData: MapData | null = null;
+  private cities: CityData[] | null = null;
 
   constructor() {
     super('.mapWrap', CHART_DIMENSIONS.map);
-    this.projection = d3.geoMercator()
+    this.projection = geoMercator()
       .scale(MAP_PROJECTION_CONFIG.scale)
       .translate(MAP_PROJECTION_CONFIG.translate as [number, number]);
     
-    this.path = d3.geoPath().projection(this.projection);
-    this.colorScale = d3.scaleThreshold<number, string>()
+    this.path = geoPath().projection(this.projection);
+    this.colorScale = scaleThreshold<number, string>()
       .domain(MAP_COLOR_SCALE.domain)
       .range(MAP_COLOR_SCALE.range);
   }
@@ -38,15 +43,21 @@ export class MapChart extends BaseChart {
 
       const chartGroup = this.getChartGroup();
       
-      // Load city and map data
-      const [citiesRaw, mapData] = await Promise.all([
-        d3.csv<CityData>('data/canadian_cities.csv'),
-        d3.json<MapData>('data/province_map.json')
-      ]);
+      // Load city and map data (only once, cache for subsequent renders)
+      if (!this.mapData || !this.cities) {
+        const [citiesRaw, mapData] = await Promise.all([
+          csv<CityData>('data/canadian_cities.csv'),
+          json<MapData>('data/province_map.json')
+        ]);
 
-      const cities = citiesRaw as unknown as CityData[];
+        this.cities = citiesRaw as unknown as CityData[];
+        this.mapData = mapData;
 
-      if (!mapData) throw new Error('Failed to load map data');
+        if (!this.mapData) throw new Error('Failed to load map data');
+      }
+
+      const cities = this.cities;
+      const mapData = this.mapData;
 
       // Create a lookup map for tourist data by province name
       const dataMap = new Map<string, TouristData>();
@@ -137,7 +148,7 @@ export class MapChart extends BaseChart {
     paths
       .on('pointerenter', function(event: PointerEvent, d) {
         // Change opacity on hover for subtle visual feedback
-        d3.select(this)
+        select(this)
           .style('opacity', '0.7');
         
         if (d.data) {
@@ -147,7 +158,7 @@ export class MapChart extends BaseChart {
       })
       .on('pointerleave', function(event: PointerEvent, d) {
         // Restore original opacity
-        d3.select(this)
+        select(this)
           .style('opacity', '1');
         
         self.tooltip.hide();
@@ -196,7 +207,7 @@ export class MapChart extends BaseChart {
 
   private drawLegend(): void {
     // Legend for large screens
-    const legendLarge = d3.select('.mapWrap')
+    const legendLarge = select('.mapWrap')
       .append('svg')
       .attr('width', '130')
       .attr('height', '505')
@@ -230,7 +241,7 @@ export class MapChart extends BaseChart {
       .text('Tourists');
 
     // Legend for small screens
-    const legendSmall = d3.select('.mapWrap')
+    const legendSmall = select('.mapWrap')
       .append('svg')
       .attr('width', '600')
       .attr('height', '140')

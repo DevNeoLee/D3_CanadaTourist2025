@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { select, Selection } from 'd3-selection';
 import { ChartDimensions } from '../types';
 import { Tooltip } from './Tooltip';
 
@@ -6,7 +6,7 @@ export abstract class BaseChart {
   protected container: string;
   protected dimensions: ChartDimensions;
   protected tooltip: Tooltip;
-  protected svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
+  protected svg: Selection<SVGSVGElement, unknown, null, undefined>;
 
   constructor(container: string, dimensions: ChartDimensions) {
     this.container = container;
@@ -15,27 +15,27 @@ export abstract class BaseChart {
     this.svg = this.createSVG();
   }
 
-  protected createSVG(): d3.Selection<SVGSVGElement, unknown, null, undefined> {
-    return d3.select(this.container)
+  protected createSVG(): Selection<SVGSVGElement, unknown, null, undefined> {
+    return select(this.container)
       .append('svg')
       .attr('width', this.dimensions.width + this.dimensions.margin.left + this.dimensions.margin.right)
       .attr('height', this.dimensions.height + this.dimensions.margin.top + this.dimensions.margin.bottom);
   }
 
-  protected getChartGroup(): d3.Selection<SVGGElement, unknown, null, undefined> {
+  protected getChartGroup(): Selection<SVGGElement, unknown, null, undefined> {
     return this.svg
       .append('g')
       .attr('transform', `translate(${this.dimensions.margin.left}, ${this.dimensions.margin.top})`);
   }
 
   public clear(): void {
-    d3.select(this.container).selectAll('svg').remove();
+    select(this.container).selectAll('svg').remove();
     this.svg = this.createSVG();
   }
 
   public destroy(): void {
     this.tooltip.destroy();
-    d3.select(this.container).selectAll('svg').remove();
+    select(this.container).selectAll('svg').remove();
   }
 
   protected formatNumber(value: number): string {

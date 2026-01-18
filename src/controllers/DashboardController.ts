@@ -1,24 +1,23 @@
-import * as d3 from 'd3';
+import { select, selectAll } from 'd3-selection';
 import { DataService } from '../services/DataService';
 import { MapChart } from '../components/MapChart';
-import { BarChart } from '../components/BarChart';
-import { PieChart } from '../components/PieChart';
 import { Year, Month, LoadingManager } from '../types';
 import { MONTHS } from '../constants';
+import type { BarChart } from '../components/BarChart';
+import type { PieChart } from '../components/PieChart';
 
 export class DashboardController {
   private dataService: DataService;
   private mapChart: MapChart;
-  private barChart: BarChart;
-  private pieChart: PieChart;
+  private barChart: BarChart | null = null;
+  private pieChart: PieChart | null = null;
   private currentYear: Year = 10; // 2010
   private currentMonth: Month = 7; // July
 
   constructor() {
     this.dataService = DataService.getInstance();
     this.mapChart = new MapChart();
-    this.barChart = new BarChart();
-    this.pieChart = new PieChart();
+    // BarChart and PieChart will be lazy loaded
   }
 
   /**
@@ -77,18 +76,35 @@ export class DashboardController {
   }
 
   /**
+   * Lazy load chart components
+   */
+  private async loadChartComponents(): Promise<void> {
+    if (!this.barChart) {
+      const { BarChart } = await import('../components/BarChart');
+      this.barChart = new BarChart();
+    }
+    if (!this.pieChart) {
+      const { PieChart } = await import('../components/PieChart');
+      this.pieChart = new PieChart();
+    }
+  }
+
+  /**
    * Update charts
    */
   private async updateCharts(): Promise<void> {
     try {
+      // Lazy load chart components if not loaded
+      await this.loadChartComponents();
+
       const sortedData = await this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
       const totalVisitors = await this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
 
       // Render all charts in parallel
       await Promise.all([
         this.mapChart.render(sortedData),
-        this.barChart.render(sortedData),
-        this.pieChart.render(sortedData, totalVisitors)
+        this.barChart!.render(sortedData),
+        this.pieChart!.render(sortedData, totalVisitors)
       ]);
 
     } catch (error) {
@@ -105,8 +121,8 @@ export class DashboardController {
     const monthName = MONTHS[this.currentMonth - 1];
     const year = 2000 + this.currentYear;
 
-    d3.selectAll('.info').remove();
-    d3.select('.infoWrap')
+    selectAll('.info').remove();
+    select('.infoWrap')
       .append('text')
       .attr('class', 'info')
       .text(`${this.formatNumber(totalVisitors)} Tourists Have Visited Canada on ${monthName} ${year}`);
@@ -187,7 +203,11 @@ export class DashboardController {
    */
   public destroy(): void {
     this.mapChart.destroy();
-    this.barChart.destroy();
-    this.pieChart.destroy();
+    if (this.barChart) {
+      this.barChart.destroy();
+    }
+    if (this.pieChart) {
+      this.pieChart.destroy();
+    }
   }
 } 

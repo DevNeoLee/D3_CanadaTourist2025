@@ -8,8 +8,21 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          d3: ['d3']
+        manualChunks(id) {
+          // Separate D3 into its own chunk
+          if (id.includes('node_modules/d3')) {
+            return 'd3';
+          }
+          // Separate chart components into their own chunks
+          if (id.includes('BarChart')) {
+            return 'chart-bar';
+          }
+          if (id.includes('PieChart')) {
+            return 'chart-pie';
+          }
+          if (id.includes('MapChart')) {
+            return 'chart-map';
+          }
         }
       }
     }

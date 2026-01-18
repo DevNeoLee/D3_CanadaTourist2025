@@ -1,27 +1,36 @@
-import * as d3 from 'd3';
+import { select, Selection } from 'd3-selection';
+import { scaleThreshold, scaleLinear, scaleSqrt, scaleBand, ScaleThreshold, ScaleLinear, ScalePower, ScaleBand } from 'd3-scale';
+import { axisBottom, axisLeft } from 'd3-axis';
+import 'd3-transition'; // Extend selection with transition methods
 import { TouristData } from '../types';
 import { BaseChart } from './BaseChart';
 import { BAR_COLOR_SCALE, CHART_DIMENSIONS, ANIMATION_CONFIG } from '../constants';
 
 export class BarChart extends BaseChart {
-  private colorScale: d3.ScaleThreshold<number, string>;
-  private xScale: d3.ScaleLinear<number, number>;
-  private yScale: d3.ScalePower<number, number>;
-  private xAxisScale: d3.ScaleBand<string>;
+  private colorScale: ScaleThreshold<number, string>;
+  private xScale: ScaleLinear<number, number>;
+  private yScale: ScalePower<number, number>;
+  private xAxisScale: ScaleBand<string>;
 
   constructor() {
     super('.leftContainer', CHART_DIMENSIONS.bar);
-    this.colorScale = d3.scaleThreshold<number, string>()
+    this.colorScale = scaleThreshold<number, string>()
       .domain(BAR_COLOR_SCALE.domain)
       .range(BAR_COLOR_SCALE.range);
     
-    this.xScale = d3.scaleLinear();
-    this.yScale = d3.scaleSqrt() as d3.ScalePower<number, number>;
-    this.xAxisScale = d3.scaleBand();
+    this.xScale = scaleLinear();
+    this.yScale = scaleSqrt() as ScalePower<number, number>;
+    this.xAxisScale = scaleBand();
   }
 
   public render(data: TouristData[]): void {
     try {
+      // Validate data
+      if (!data || data.length === 0) {
+        console.warn('BarChart: No data provided');
+        return;
+      }
+
       this.clear();
       
       const chartGroup = this.getChartGroup();
@@ -55,12 +64,13 @@ export class BarChart extends BaseChart {
   }
 
   private drawBars(
-    chartGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
+    chartGroup: Selection<SVGGElement, unknown, null, undefined>,
     data: TouristData[]
-  ): d3.Selection<SVGRectElement, TouristData, SVGGElement, unknown> {
+  ): Selection<SVGRectElement, TouristData, SVGGElement, unknown> {
     const { width, height } = this.dimensions;
     const barWidth = width / data.length;
 
+    const self = this;
     const bars = chartGroup.selectAll('rect')
       .data(data)
       .enter()
@@ -72,16 +82,17 @@ export class BarChart extends BaseChart {
       .style('fill', (d, i) => this.colorScale(i + 1))
       // Connect event listeners before transition
       .on('pointerenter', function(event: PointerEvent, d: TouristData) {
-        d3.select(this)
+        if (!d) return;
+        select(this)
           .style('opacity', '0.4');
-        const content = (this as any).getTooltipContent(d, 'Province');
-        (this as any).tooltip.show(content, event.pageX - 50, event.pageY - 100);
-      }.bind(this))
+        const content = self.getTooltipContent(d, 'Province');
+        self.tooltip.show(content, event.pageX - 50, event.pageY - 100);
+      })
       .on('pointerleave', function(event: PointerEvent) {
-        d3.select(this)
+        select(this)
           .style('opacity', '1');
-        (this as any).tooltip.hide();
-      }.bind(this))
+        self.tooltip.hide();
+      })
       .attr('y', height + 20)
       .attr('height', 0);
 
@@ -89,7 +100,7 @@ export class BarChart extends BaseChart {
   }
 
   private animateBars(
-    bars: d3.Selection<SVGRectElement, TouristData, SVGGElement, unknown>,
+    bars: Selection<SVGRectElement, TouristData, SVGGElement, unknown>,
     data: TouristData[]
   ): void {
     const { height } = this.dimensions;
@@ -102,7 +113,7 @@ export class BarChart extends BaseChart {
   }
 
   private drawLabels(
-    chartGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
+    chartGroup: Selection<SVGGElement, unknown, null, undefined>,
     data: TouristData[]
   ): void {
     const { width, height } = this.dimensions;
@@ -126,13 +137,13 @@ export class BarChart extends BaseChart {
   }
 
   private drawAxes(
-    chartGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
+    chartGroup: Selection<SVGGElement, unknown, null, undefined>,
     data: TouristData[]
   ): void {
     const { height } = this.dimensions;
 
     // X-axis
-    const xAxis = d3.axisBottom(this.xAxisScale);
+    const xAxis = axisBottom(this.xAxisScale);
     chartGroup.append('g')
       .attr('class', 'x_axis')
       .attr('transform', `translate(65, ${height + 10})`)
@@ -145,11 +156,11 @@ export class BarChart extends BaseChart {
       .attr('y', -5);
 
     // Y-axis
-    const yAxisScale = d3.scaleSqrt()
+    const yAxisScale = scaleSqrt()
       .domain([1700000, 0])
       .range([0, height]);
     
-    const yAxis = d3.axisLeft(yAxisScale);
+    const yAxis = axisLeft(yAxisScale);
     chartGroup.append('g')
       .attr('class', 'y_axis')
       .attr('transform', 'translate(65, 10)')
@@ -157,7 +168,7 @@ export class BarChart extends BaseChart {
   }
 
   private drawTitle(
-    chartGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
+    chartGroup: Selection<SVGGElement, unknown, null, undefined>,
     data: TouristData[]
   ): void {
     // Title
