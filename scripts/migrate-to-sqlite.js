@@ -72,7 +72,8 @@ function migrate() {
   console.log('Parsing CSV...');
   const records = parse(csvContent, {
     columns: true,
-    skip_empty_lines: true
+    skip_empty_lines: true,
+    bom: true  // Handle UTF-8 BOM
   });
   
   console.log(`Total records: ${records.length}`);
