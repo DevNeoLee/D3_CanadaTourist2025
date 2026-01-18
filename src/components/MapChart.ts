@@ -12,6 +12,7 @@ export class MapChart extends BaseChart {
   private colorScale: ScaleThreshold<number, string>;
   private mapData: MapData | null = null;
   private cities: CityData[] | null = null;
+  private dataLoadPromise: Promise<void> | null = null;
 
   constructor() {
     super('.mapWrap', CHART_DIMENSIONS.map);
@@ -23,6 +24,34 @@ export class MapChart extends BaseChart {
     this.colorScale = scaleThreshold<number, string>()
       .domain(MAP_COLOR_SCALE.domain)
       .range(MAP_COLOR_SCALE.range);
+    
+    // Start loading map data immediately in constructor
+    this.preloadMapData();
+  }
+
+  /**
+   * Preload map data early, before render is called
+   */
+  private async preloadMapData(): Promise<void> {
+    if (this.dataLoadPromise) {
+      return this.dataLoadPromise;
+    }
+
+    this.dataLoadPromise = (async () => {
+      if (!this.mapData || !this.cities) {
+        const [citiesRaw, mapData] = await Promise.all([
+          csv<CityData>('data/canadian_cities.csv'),
+          json<MapData>('data/province_map.json')
+        ]);
+
+        this.cities = citiesRaw as unknown as CityData[];
+        this.mapData = mapData;
+
+        if (!this.mapData) throw new Error('Failed to load map data');
+      }
+    })();
+
+    return this.dataLoadPromise;
   }
 
   public async render(data: TouristData[]): Promise<void> {
@@ -43,18 +72,11 @@ export class MapChart extends BaseChart {
 
       const chartGroup = this.getChartGroup();
       
-      // Load city and map data (only once, cache for subsequent renders)
-      if (!this.mapData || !this.cities) {
-        const [citiesRaw, mapData] = await Promise.all([
-          csv<CityData>('data/canadian_cities.csv'),
-          json<MapData>('data/province_map.json')
-        ]);
-
-        this.cities = citiesRaw as unknown as CityData[];
-        this.mapData = mapData;
-
-        if (!this.mapData) throw new Error('Failed to load map data');
-      }
+      // Wait for preloaded data (or load if not started)
+      await this.preloadMapData();
+      
+      if (!this.mapData) throw new Error('Failed to load map data');
+      if (!this.cities) throw new Error('Failed to load city data');
 
       const cities = this.cities;
       const mapData = this.mapData;

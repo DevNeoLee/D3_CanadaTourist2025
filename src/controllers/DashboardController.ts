@@ -16,6 +16,7 @@ export class DashboardController {
 
   constructor() {
     this.dataService = DataService.getInstance();
+    // Create MapChart early to start preloading map data
     this.mapChart = new MapChart();
     // BarChart and PieChart will be lazy loaded
   }
@@ -47,15 +48,26 @@ export class DashboardController {
     try {
       this.updateLoadingProgress(10);
       
-      // Load data
-      await this.dataService.loadData();
-      this.updateLoadingProgress(40);
+      // Start loading data and map data in parallel
+      const [dataPromise, mapDataPromise] = [
+        this.dataService.loadData(),
+        // MapChart constructor already started preloading, just wait for it
+        Promise.resolve()
+      ];
       
-      // Setup event listeners
+      // Setup event listeners (non-blocking)
       this.setupEventListeners();
+      this.updateLoadingProgress(30);
+      
+      // Wait for data to load
+      await dataPromise;
+      this.updateLoadingProgress(50);
+      
+      // Wait for map data (if not already loaded)
+      await mapDataPromise;
       this.updateLoadingProgress(60);
       
-      // Update charts
+      // Update charts (parallel where possible)
       await this.updateCharts();
       this.updateLoadingProgress(90);
       
