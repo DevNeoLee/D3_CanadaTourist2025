@@ -18,7 +18,9 @@ export class PieChart extends BaseChart {
   public async render(data: TouristData[], total: number): Promise<void> {
     try {
       this.clear();
-      
+      // So only pie pieces receive pointer events; rest of SVG lets events pass through
+      this.svg.attr('class', 'pie-chart-svg');
+
       const chartGroup = this.getChartGroup();
       const { pieces } = this.drawPie(chartGroup, data, total);
       this.animatePie(pieces, data, total);
@@ -59,26 +61,26 @@ export class PieChart extends BaseChart {
       .append('g')
       .attr('class', 'arc');
 
-    // Draw pie pieces
+    // Draw pie pieces (use self like MapChart so tooltip ref is correct)
+    const self = this;
     const pieces = arcs.append('path')
       .attr('class', 'piece')
       .attr('d', arc)
       .attr('fill', (d, i) => this.colorScale(i + 1))
-      // Connect event listeners before transition
       .on('pointerenter', function(event: PointerEvent, d: d3.PieArcDatum<TouristData>) {
         d3.select(this)
           .attr('d', arcLarge)
           .style('opacity', '0.5');
         const percentage = Math.round((parseInt(d.data.VALUE) / totalVisitors) * 100);
-        const content = `${d.data.GEO} on ${d.data.REF_DATE}<br/>Non-Residential Travellers: ${this.formatNumber(parseInt(d.data.VALUE))} persons<br/>${percentage}%`;
-        this.tooltip.show(content, event.pageX + 5, event.pageY - 100);
-      }.bind(this))
+        const content = `${d.data.GEO} on ${d.data.REF_DATE}<br/>Non-Residential Travellers: ${self.formatNumber(parseInt(d.data.VALUE))} persons<br/>${percentage}%`;
+        self.tooltip.show(content, event.pageX + 5, event.pageY - 100);
+      })
       .on('pointerleave', function(event: PointerEvent, d: d3.PieArcDatum<TouristData>) {
         d3.select(this)
           .attr('d', arc)
           .style('opacity', '1.0');
-        this.tooltip.hide();
-      }.bind(this));
+        self.tooltip.hide();
+      });
 
     // Add percent text
     arcs.append('text')
@@ -93,7 +95,7 @@ export class PieChart extends BaseChart {
         const percentage = Math.round((parseInt(d.data.VALUE) / totalVisitors) * 100);
         return percentage > 3 ? `${percentage}%` : null;
       })
-      .attr('class', 'text');
+      .attr('class', 'text pieChartText');
 
     // Add title
     arcs.append('text')

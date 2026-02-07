@@ -23,7 +23,9 @@ export class MapChart extends BaseChart {
   public async render(data: TouristData[]): Promise<void> {
     try {
       this.clear();
-      
+      // Only province paths receive pointer events (tooltips); rest passes through
+      // this.svg.attr('class', 'map-chart-svg');
+
       // Add Northwest Territories data if not present
       const hasNWT = data.some(d => d.GEO === "Northwest Territories");
       const dataWithNWT = hasNWT 

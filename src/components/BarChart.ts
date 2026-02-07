@@ -23,7 +23,9 @@ export class BarChart extends BaseChart {
   public render(data: TouristData[]): void {
     try {
       this.clear();
-      
+      // So only bars receive pointer events; rest of SVG lets events pass through to pie below
+      this.svg.attr('class', 'bar-chart-svg');
+
       const chartGroup = this.getChartGroup();
       this.setupScales(data);
       const bars = this.drawBars(chartGroup, data);
@@ -60,6 +62,7 @@ export class BarChart extends BaseChart {
   ): d3.Selection<SVGRectElement, TouristData, SVGGElement, unknown> {
     const { width, height } = this.dimensions;
     const barWidth = width / data.length;
+    const self = this;
 
     const bars = chartGroup.selectAll('rect')
       .data(data)
@@ -70,18 +73,17 @@ export class BarChart extends BaseChart {
       .attr('width', barWidth)
       .attr('x', (d, i) => barWidth * i)
       .style('fill', (d, i) => this.colorScale(i + 1))
-      // Connect event listeners before transition
       .on('pointerenter', function(event: PointerEvent, d: TouristData) {
         d3.select(this)
           .style('opacity', '0.4');
-        const content = (this as any).getTooltipContent(d, 'Province');
-        (this as any).tooltip.show(content, event.pageX - 50, event.pageY - 100);
-      }.bind(this))
+        const content = self.getTooltipContent(d, 'Province');
+        self.tooltip.show(content, event.pageX - 50, event.pageY - 100);
+      })
       .on('pointerleave', function(event: PointerEvent) {
         d3.select(this)
           .style('opacity', '1');
-        (this as any).tooltip.hide();
-      }.bind(this))
+        self.tooltip.hide();
+      })
       .attr('y', height + 20)
       .attr('height', 0);
 
@@ -112,7 +114,7 @@ export class BarChart extends BaseChart {
       .data(data)
       .enter()
       .append('text')
-      .attr('class', 'label')
+      .attr('class', 'label barChartLabel')
       .text(d => this.formatNumber(parseInt(d.VALUE)))
       .attr('y', height - 500)
       .attr('height', 0)

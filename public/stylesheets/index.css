@@ -46,18 +46,20 @@ footer a {
     text-decoration: none;
 }
 
-div.tooltip {
+/* Tooltip: styling in CSS; JS sets position and opacity */
+.tooltip {
     position: absolute;
-    text-align: center;
+    opacity: 0;
     padding: 10px;
-    font: 12px sans-serif;
-    background: white;
-    border: 0.5px solid black;
-    border-radius: 8px;
-    pointer-events: none;
     font-size: 15px;
     line-height: 1.5;
+    text-align: center;
+    background: white;
+    border: 1px solid black;
+    border-radius: 8px;
+    pointer-events: none;
     z-index: 10;
+    transition: opacity 0.15s ease-out;
 }
 
 a {
@@ -123,6 +125,18 @@ img:hover {
     margin-top: 10px;;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Tooltip hover: only interactive elements receive pointer events; overlay text and SVG background pass through */
+.barChartLabel,
+.pieChartText {
+  pointer-events: none;
+}
+.bar-chart-svg { pointer-events: none; }
+.bar-chart-svg .bar { pointer-events: auto; }
+.pie-chart-svg { pointer-events: none; }
+.pie-chart-svg .piece { pointer-events: auto; }
+.map-chart-svg { pointer-events: none; }
+.map-chart-svg .path { pointer-events: auto; }
 
 @media only screen and (min-width: 800px) {
     .infoContainer {
