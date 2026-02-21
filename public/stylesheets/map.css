@@ -2,7 +2,8 @@
 
 .mapWrap {
     margin: 0 auto;
-    text-align: center;   
+    text-align: center;
+    gap: 0;
 }
 
 .map {
@@ -32,6 +33,7 @@
     .legend2 {
         padding-top: 80px;
         display: block;
+        margin-left: -28px; /* pull legend closer to map */
     }
 
     .legend1 {
@@ -41,13 +43,19 @@
     .mapWrap {
         display: flex;
         width: 900px;
+        gap: 0;
     }
 }
 
 @media only screen and (min-width: 1385px) {
- .mapWrap {
-        order: 2;
+    .mapWrap {
+        order: 0;
         display: flex;
-        width: 780px;
+        width: 900px;
+        gap: 0;
+    }
+
+    .legend2 {
+        margin-left: -28px;
     }
 }

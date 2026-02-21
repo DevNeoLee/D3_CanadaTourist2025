@@ -79,6 +79,29 @@
                     <!-- Dynamic info will be displayed here -->
                 </div>
             </div>
+
+            <!-- Option A: AI summary + chat right under controller, squeezed (no extra height) -->
+            <section class="aiSummarySection" aria-labelledby="ai-summary-heading">
+                <div class="aiSummaryRow">
+                    <h2 id="ai-summary-heading" class="aiSummaryHeading">In plain English</h2>
+                    <button type="button" class="aiSummaryRegenerate" aria-label="Generate or regenerate AI summary" style="display: none;">Generate with AI</button>
+                </div>
+                <p class="aiSummaryText" role="region" aria-live="polite">
+                    <span class="aiSummaryPlaceholder">Select a year and month to see a summary.</span>
+                </p>
+                <details class="aiAskDetails" id="ai-ask-details">
+                    <summary class="aiAskSummary">Ask about this data</summary>
+                    <div class="aiAskPanel">
+                        <div class="aiAskOutput" role="status" aria-live="polite"><span class="aiAskPlaceholder">Answer appears here.</span></div>
+                        <div class="aiAskInputWrap">
+                            <label for="aiAskInput" class="visually-hidden">Ask a question about the current data</label>
+                            <input type="text" id="aiAskInput" class="aiAskInput" placeholder="e.g. Which province had the most visitors?" autocomplete="off">
+                            <button type="button" class="aiAskSend" aria-label="Send question">Send</button>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
             <div class="mapWrap">
                 <!-- Map chart will be rendered here -->
             </div>

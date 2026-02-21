@@ -49,7 +49,7 @@ export const CHART_DIMENSIONS = {
   map: {
     width: 670,
     height: 505,
-    margin: { top: 62, left: 30, right: 50, bottom: 50 }
+    margin: { top: 62, left: 30, right: 50, bottom: 4 }
   },
   bar: {
     width: 580,
