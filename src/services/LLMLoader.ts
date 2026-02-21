@@ -98,7 +98,7 @@ function formatHistory(history: { role: string; content: string }[]): string {
 }
 
 /**
- * Single entry for chat: uses remote API (Groq/OpenAI) if configured with friendly-assistant rules and optional data context, else local model.
+ * Single entry for chat: uses remote API (Groq/OpenAI) if configured; on network/API failure falls back to local model when available.
  */
 export async function runChat(
   userMessage: string,
@@ -108,11 +108,23 @@ export async function runChat(
   if (isOpenAIConfigured()) {
     const messages = [...history.slice(-MAX_HISTORY_MESSAGES), { role: 'user' as const, content: userMessage }];
     console.log('[LLM] runChat: using remote API with rules, messages=', messages.length, 'dataContext=', !!dataContext);
-    return remoteChat(messages, {
-      systemPrompt: FRIENDLY_ASSISTANT_RULES,
-      dataContext,
-      max_tokens: 320,
-    });
+    try {
+      return await remoteChat(messages, {
+        systemPrompt: FRIENDLY_ASSISTANT_RULES,
+        dataContext,
+        max_tokens: 320,
+      });
+    } catch (remoteErr) {
+      console.warn('[LLM] runChat: remote API failed (e.g. no internet), falling back to local model', remoteErr);
+      try {
+        await loadModel();
+        const localResult = await runInference(userMessage, history, dataContext);
+        return localResult;
+      } catch (localErr) {
+        console.error('[LLM] runChat: local fallback also failed', localErr);
+        throw remoteErr;
+      }
+    }
   }
   return runInference(userMessage, history, dataContext);
 }

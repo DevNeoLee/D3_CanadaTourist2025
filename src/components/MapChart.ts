@@ -7,6 +7,12 @@ export class MapChart extends BaseChart {
   private projection: d3.GeoProjection;
   private path: d3.GeoPath<any, any>;
   private colorScale: d3.ScaleThreshold<number, string>;
+  /** Cached once at first render; reused on year/month change to avoid refetching. */
+  private citiesCache: CityData[] | null = null;
+  /** Cached once at first render; reused on year/month change to avoid refetching. */
+  private mapDataCache: MapData | null = null;
+  /** Single load promise so concurrent renders don't trigger duplicate fetches. */
+  private staticDataLoadPromise: Promise<[CityData[], MapData]> | null = null;
 
   constructor() {
     super('.mapWrap', CHART_DIMENSIONS.map);
@@ -18,6 +24,29 @@ export class MapChart extends BaseChart {
     this.colorScale = d3.scaleThreshold<number, string>()
       .domain(MAP_COLOR_SCALE.domain)
       .range(MAP_COLOR_SCALE.range);
+  }
+
+  /**
+   * Load canadian_cities.csv and province_map.json once; subsequent calls return cached data (no refetch on year/month change).
+   */
+  private async getStaticData(): Promise<[CityData[], MapData]> {
+    if (this.citiesCache && this.mapDataCache) {
+      return [this.citiesCache, this.mapDataCache];
+    }
+    if (!this.staticDataLoadPromise) {
+      this.staticDataLoadPromise = Promise.all([
+        d3.csv<CityData>('data/canadian_cities.csv'),
+        d3.json<MapData>('data/province_map.json')
+      ]).then(([citiesRaw, mapData]) => {
+        if (!mapData) throw new Error('Failed to load map data');
+        const cities = citiesRaw as unknown as CityData[];
+        return [cities, mapData];
+      });
+    }
+    const [cities, mapData] = await this.staticDataLoadPromise;
+    this.citiesCache = cities;
+    this.mapDataCache = mapData;
+    return [cities, mapData];
   }
 
   public async render(data: TouristData[]): Promise<void> {
@@ -40,15 +69,8 @@ export class MapChart extends BaseChart {
 
       const chartGroup = this.getChartGroup();
       
-      // Load city and map data
-      const [citiesRaw, mapData] = await Promise.all([
-        d3.csv<CityData>('data/canadian_cities.csv'),
-        d3.json<MapData>('data/province_map.json')
-      ]);
-
-      const cities = citiesRaw as unknown as CityData[];
-
-      if (!mapData) throw new Error('Failed to load map data');
+      // Use cached static data (fetched once per app lifecycle)
+      const [cities, mapData] = await this.getStaticData();
 
       // Create a lookup map for tourist data by province name
       const dataMap = new Map<string, TouristData>();
