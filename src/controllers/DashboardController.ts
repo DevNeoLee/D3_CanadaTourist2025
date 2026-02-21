@@ -15,6 +15,7 @@ export class DashboardController {
   private currentYear: Year = 10;
   private currentMonth: Month = 7;
   private chatMessages: { role: 'user' | 'assistant'; content: string }[] = [];
+  private static readonly CHAT_STORAGE_KEY = 'canada-tourist-chat';
 
   constructor() {
     this.dataService = DataService.getInstance();
@@ -174,10 +175,13 @@ export class DashboardController {
 
     if (!overlay || !modalMessages) return;
 
+    this.loadChatFromStorage();
+
     const openModal = (firstQuestion: string, runLLM: boolean): HTMLElement | null => {
       overlay.classList.add('chatModalOpen');
       overlay.setAttribute('aria-hidden', 'false');
-      this.appendModalMessage(modalMessages, 'user', firstQuestion);
+      modalMessages.innerHTML = '';
+      this.chatMessages.forEach((m) => this.appendModalMessage(modalMessages, m.role, m.content));
       this.appendModalMessage(
         modalMessages,
         'assistant',
@@ -205,6 +209,7 @@ export class DashboardController {
         const assistantEl = container.lastElementChild as HTMLElement | null;
         if (assistantEl) assistantEl.textContent = REFUSAL_MESSAGE;
         this.chatMessages.push({ role: 'assistant', content: REFUSAL_MESSAGE });
+        this.saveChatToStorage();
         this.scrollModalMessagesToBottom(container);
       } else if (runLLM && container) {
         const assistantEl = container.lastElementChild as HTMLElement | null;
@@ -212,6 +217,7 @@ export class DashboardController {
         runInference(text, history)
           .then((result) => {
             this.chatMessages.push({ role: 'assistant', content: result });
+            this.saveChatToStorage();
             if (assistantEl) assistantEl.textContent = result || 'No response.';
             this.scrollModalMessagesToBottom(container);
           })
@@ -234,12 +240,14 @@ export class DashboardController {
       if (modalInput) modalInput.value = '';
       if (blocked) {
         this.chatMessages.push({ role: 'assistant', content: REFUSAL_MESSAGE });
+        this.saveChatToStorage();
       } else if (runLLM) {
         const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
         const history = this.chatMessages.slice(0, -1);
         runInference(text, history)
           .then((result) => {
             this.chatMessages.push({ role: 'assistant', content: result });
+            this.saveChatToStorage();
             if (assistantEl) assistantEl.textContent = result || 'No response.';
             this.scrollModalMessagesToBottom(modalMessages);
           })
@@ -249,6 +257,15 @@ export class DashboardController {
           });
       }
     };
+
+    const clearChat = (): void => {
+      this.chatMessages = [];
+      this.saveChatToStorage();
+      modalMessages.innerHTML = '';
+    };
+
+    const modalClear = document.querySelector('.chatModalClear');
+    modalClear?.addEventListener('click', clearChat);
 
     mainSend?.addEventListener('click', sendFromMainBar);
     mainInput?.addEventListener('keydown', (e) => {
@@ -284,6 +301,27 @@ export class DashboardController {
 
   private scrollModalMessagesToBottom(container: HTMLElement): void {
     container.scrollTop = container.scrollHeight;
+  }
+
+  private loadChatFromStorage(): void {
+    try {
+      const raw = localStorage.getItem(DashboardController.CHAT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { role: string; content: string }[];
+      if (Array.isArray(parsed) && parsed.every((m) => m && typeof m.role === 'string' && typeof m.content === 'string')) {
+        this.chatMessages = parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private saveChatToStorage(): void {
+    try {
+      localStorage.setItem(DashboardController.CHAT_STORAGE_KEY, JSON.stringify(this.chatMessages));
+    } catch {
+      /* ignore */
+    }
   }
 
   private setupLLMLoading(): void {

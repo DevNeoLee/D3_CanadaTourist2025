@@ -350,6 +350,28 @@ img:hover {
     margin: 0;
 }
 
+.chatModalHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chatModalClear {
+    font-size: 0.875rem;
+    color: #5f6368;
+    background: transparent;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chatModalClear:hover {
+    background: #f1f3f4;
+    color: #202124;
+}
+
 .chatModalClose {
     width: 36px;
     height: 36px;

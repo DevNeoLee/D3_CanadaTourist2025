@@ -114,7 +114,10 @@
         <div class="chatModal" role="document">
             <header class="chatModalHeader">
                 <h2 id="chatModalTitle" class="chatModalTitle">Local Browser Running LLM with GPU</h2>
-                <button type="button" class="chatModalClose" aria-label="Close chat">×</button>
+                <div class="chatModalHeaderActions">
+                    <button type="button" class="chatModalClear" aria-label="Clear chat">Clear</button>
+                    <button type="button" class="chatModalClose" aria-label="Close chat">×</button>
+                </div>
             </header>
             <div class="chatModalMessages" id="chatModalMessages" role="log" aria-live="polite">
                 <!-- Messages appended by JS -->
