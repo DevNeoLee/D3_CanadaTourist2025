@@ -55,6 +55,7 @@ export class DashboardController {
       // Setup event listeners
       this.setupEventListeners();
       this.setupThickCaret();
+      this.setupChatModal();
       this.updateLoadingProgress(60);
       
       // Update charts
@@ -154,6 +155,86 @@ export class DashboardController {
         chatInput.focus();
       }
     }, 0);
+  }
+
+  /**
+   * Chat modal: open on first question from LLM bar; subsequent chat in modal.
+   */
+  private setupChatModal(): void {
+    const overlay = document.getElementById('chatModalOverlay');
+    const mainInput = document.getElementById('aiAskInput') as HTMLInputElement | null;
+    const mainSend = document.querySelector('.aiAskSend.aiPill');
+    const modalMessages = document.getElementById('chatModalMessages');
+    const modalInput = document.getElementById('chatModalInput') as HTMLInputElement | null;
+    const modalSend = document.querySelector('.chatModalSend');
+    const modalClose = document.querySelector('.chatModalClose');
+
+    if (!overlay || !modalMessages) return;
+
+    const openModal = (firstQuestion: string): void => {
+      overlay.classList.add('chatModalOpen');
+      overlay.setAttribute('aria-hidden', 'false');
+      this.appendModalMessage(modalMessages, 'user', firstQuestion);
+      this.appendModalMessage(modalMessages, 'assistant', 'Answer will appear here when LLM is connected.');
+      this.scrollModalMessagesToBottom(modalMessages);
+      setTimeout(() => (modalInput?.focus()), 100);
+    };
+
+    const closeModal = (): void => {
+      overlay.classList.remove('chatModalOpen');
+      overlay.setAttribute('aria-hidden', 'true');
+    };
+
+    const sendFromMainBar = (): void => {
+      const text = mainInput?.value?.trim() ?? '';
+      if (!text) return;
+      openModal(text);
+      if (mainInput) mainInput.value = '';
+    };
+
+    const sendFromModal = (): void => {
+      const text = modalInput?.value?.trim() ?? '';
+      if (!text) return;
+      this.appendModalMessage(modalMessages, 'user', text);
+      this.appendModalMessage(modalMessages, 'assistant', 'Follow-up answer will appear here when LLM is connected.');
+      this.scrollModalMessagesToBottom(modalMessages);
+      if (modalInput) modalInput.value = '';
+    };
+
+    mainSend?.addEventListener('click', sendFromMainBar);
+    mainInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendFromMainBar();
+      }
+    });
+
+    modalSend?.addEventListener('click', sendFromModal);
+    modalInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendFromModal();
+      }
+    });
+
+    modalClose?.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.classList.contains('chatModalOpen')) closeModal();
+    });
+  }
+
+  private appendModalMessage(container: HTMLElement, role: 'user' | 'assistant', text: string): void {
+    const div = document.createElement('div');
+    div.className = `chatModalMsg ${role}`;
+    div.textContent = text;
+    container.appendChild(div);
+  }
+
+  private scrollModalMessagesToBottom(container: HTMLElement): void {
+    container.scrollTop = container.scrollHeight;
   }
 
   /**

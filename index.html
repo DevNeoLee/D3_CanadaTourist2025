@@ -86,7 +86,7 @@
                     <span class="aiBarLeft" aria-hidden="true" title="Add">+</span>
                     <label for="aiAskInput" class="visually-hidden">Ask about this data</label>
                     <div class="aiAskInputCaretWrap">
-                        <input type="text" id="aiAskInput" class="aiAskInput" placeholder="Talk to your local browser running LLM..." autocomplete="off">
+                        <input type="text" id="aiAskInput" class="aiAskInput" placeholder="Talk to your local browser running LLM...about tourists to Canada..." autocomplete="off">
                         <span class="aiCaretFake" id="aiCaretFake" aria-hidden="true"></span>
                     </div>
                     <button type="button" class="aiAskSend aiPill" aria-label="Send or AI mode">
@@ -105,6 +105,28 @@
 
             <div class="mapWrap">
                 <!-- Map chart will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat modal: opened after first question from LLM bar; subsequent chat happens here -->
+    <div id="chatModalOverlay" class="chatModalOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="chatModalTitle">
+        <div class="chatModal" role="document">
+            <header class="chatModalHeader">
+                <h2 id="chatModalTitle" class="chatModalTitle">Local Browser Running LLM with GPU</h2>
+                <button type="button" class="chatModalClose" aria-label="Close chat">×</button>
+            </header>
+            <div class="chatModalMessages" id="chatModalMessages" role="log" aria-live="polite">
+                <!-- Messages appended by JS -->
+            </div>
+            <div class="chatModalInputRow">
+                <label for="chatModalInput" class="visually-hidden">Follow-up message</label>
+                <input type="text" id="chatModalInput" class="chatModalInput" placeholder="Ask a follow-up..." autocomplete="off">
+                <button type="button" class="chatModalSend aiAskSend aiPill" aria-label="Send">
+                        <svg class="aiIconSvg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M12 1.5 L13.2 8 L20 9.5 L13.2 11 L12 18.5 L10.8 11 L4 9.5 L10.8 8 Z" fill="white"/>
+                        </svg>
+                    </button>
             </div>
         </div>
     </div>
