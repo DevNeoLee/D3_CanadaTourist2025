@@ -168,9 +168,7 @@
                 <div class="spinner-ring"></div>
             </div>
             <div class="loading-content">
-                <div class="loading-icon">
-
-                </div>
+                <div class="loading-icon"></div>
                 <h2 class="loading-title">Canada Tourist Data</h2>
                 <p class="loading-subtitle">Loading...</p>
                 <div class="loading-progress">
@@ -414,7 +412,6 @@
                 this.isLoading = false;
                 this.updateProgress(100);
                 
-                // Wait for progress to complete, then fade out
                 setTimeout(() => {
                     this.loadingElement.classList.add('fade-out');
                     
