@@ -239,9 +239,10 @@ export class DashboardController {
         } else if (runLLM) {
           const assistantEl = container.lastElementChild as HTMLElement | null;
           const history = this.chatMessages.slice(0, -1);
-          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContextForPrompt(text);
-          console.log('[Chat] Calling LLM, dataContext=', !!dataContext);
-          runChat(text, history, dataContext)
+          const isCasual = this.isLikelyCasualOnly(text);
+          const dataContext = isCasual ? undefined : this.buildDataContextForPrompt(text);
+          console.log('[Chat] Calling LLM, dataContext=', !!dataContext, '| casual=', isCasual);
+          runChat(text, history, dataContext, isCasual)
             .then((result) => {
               console.log('[Chat] LLM result received, length:', result?.length ?? 0, '| preview:', (result ?? '').slice(0, 80) + (result && result.length > 80 ? '...' : ''));
               this.chatMessages.push({ role: 'assistant', content: result });
@@ -287,9 +288,10 @@ export class DashboardController {
         } else if (runLLM) {
           const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
           const history = this.chatMessages.slice(0, -1);
-          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContextForPrompt(text);
-          console.log('[Chat] Calling LLM, dataContext=', !!dataContext);
-          runChat(text, history, dataContext)
+          const isCasual = this.isLikelyCasualOnly(text);
+          const dataContext = isCasual ? undefined : this.buildDataContextForPrompt(text);
+          console.log('[Chat] Calling LLM, dataContext=', !!dataContext, '| casual=', isCasual);
+          runChat(text, history, dataContext, isCasual)
             .then((result) => {
               console.log('[Chat] LLM result received, length:', result?.length ?? 0, '| preview:', (result ?? '').slice(0, 80) + (result && result.length > 80 ? '...' : ''));
               this.chatMessages.push({ role: 'assistant', content: result });
@@ -669,8 +671,9 @@ export class DashboardController {
 
     setDisabled(true);
     if (isOpenAIConfigured()) {
-      console.log('[Chat] setupLLMLoading: OpenAI API configured, chat input enabled.');
+      console.log('[Chat] setupLLMLoading: remote API configured, chat input enabled. Preloading local model for offline fallback.');
       setDisabled(false);
+      loadModel().then(() => console.log('[Chat] setupLLMLoading: local model preloaded for offline use.')).catch(() => {});
       return;
     }
     console.log('[Chat] setupLLMLoading: loading local model...');
