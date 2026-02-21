@@ -5,7 +5,7 @@ import { BarChart } from '../components/BarChart';
 import { PieChart } from '../components/PieChart';
 import { Year, Month, LoadingManager } from '../types';
 import { MONTHS } from '../constants';
-import { loadModel, whenReady } from '../services/LLMLoader';
+import { loadModel, whenReady, isModelReady, runInference } from '../services/LLMLoader';
 
 export class DashboardController {
   private dataService: DataService;
@@ -173,13 +173,18 @@ export class DashboardController {
 
     if (!overlay || !modalMessages) return;
 
-    const openModal = (firstQuestion: string): void => {
+    const openModal = (firstQuestion: string, runLLM: boolean): HTMLElement | null => {
       overlay.classList.add('chatModalOpen');
       overlay.setAttribute('aria-hidden', 'false');
       this.appendModalMessage(modalMessages, 'user', firstQuestion);
-      this.appendModalMessage(modalMessages, 'assistant', 'Answer will appear here when LLM is connected.');
+      this.appendModalMessage(
+        modalMessages,
+        'assistant',
+        runLLM ? '...' : 'Answer will appear here when LLM is connected.'
+      );
       this.scrollModalMessagesToBottom(modalMessages);
-      setTimeout(() => (modalInput?.focus()), 100);
+      setTimeout(() => modalInput?.focus(), 100);
+      return modalMessages;
     };
 
     const closeModal = (): void => {
@@ -190,8 +195,21 @@ export class DashboardController {
     const sendFromMainBar = (): void => {
       const text = mainInput?.value?.trim() ?? '';
       if (!text) return;
-      openModal(text);
+      const runLLM = isModelReady();
+      const container = openModal(text, runLLM);
       if (mainInput) mainInput.value = '';
+      if (runLLM && container) {
+        const assistantEl = container.lastElementChild as HTMLElement | null;
+        runInference(text)
+          .then((result) => {
+            if (assistantEl) assistantEl.textContent = result || 'No response.';
+            this.scrollModalMessagesToBottom(container);
+          })
+          .catch(() => {
+            if (assistantEl) assistantEl.textContent = 'Sorry, something went wrong.';
+            this.scrollModalMessagesToBottom(container);
+          });
+      }
     };
 
     const sendFromModal = (): void => {
