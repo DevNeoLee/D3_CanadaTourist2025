@@ -5,7 +5,7 @@ import { BarChart } from '../components/BarChart';
 import { PieChart } from '../components/PieChart';
 import { Year, Month, LoadingManager } from '../types';
 import { MONTHS } from '../constants';
-import { loadModel, whenReady, isModelReady, runInference } from '../services/LLMLoader';
+import { loadModel, whenReady, isModelReady, runInference, isBlocked, REFUSAL_MESSAGE } from '../services/LLMLoader';
 
 export class DashboardController {
   private dataService: DataService;
@@ -196,13 +196,22 @@ export class DashboardController {
     const sendFromMainBar = (): void => {
       const text = mainInput?.value?.trim() ?? '';
       if (!text) return;
-      const runLLM = isModelReady();
+      this.chatMessages.push({ role: 'user', content: text });
+      const blocked = isBlocked(text);
+      const runLLM = isModelReady() && !blocked;
       const container = openModal(text, runLLM);
       if (mainInput) mainInput.value = '';
-      if (runLLM && container) {
+      if (blocked && container) {
         const assistantEl = container.lastElementChild as HTMLElement | null;
-        runInference(text)
+        if (assistantEl) assistantEl.textContent = REFUSAL_MESSAGE;
+        this.chatMessages.push({ role: 'assistant', content: REFUSAL_MESSAGE });
+        this.scrollModalMessagesToBottom(container);
+      } else if (runLLM && container) {
+        const assistantEl = container.lastElementChild as HTMLElement | null;
+        const history = this.chatMessages.slice(0, -1);
+        runInference(text, history)
           .then((result) => {
+            this.chatMessages.push({ role: 'assistant', content: result });
             if (assistantEl) assistantEl.textContent = result || 'No response.';
             this.scrollModalMessagesToBottom(container);
           })
@@ -218,11 +227,14 @@ export class DashboardController {
       if (!text) return;
       this.chatMessages.push({ role: 'user', content: text });
       this.appendModalMessage(modalMessages, 'user', text);
-      const runLLM = isModelReady();
-      this.appendModalMessage(modalMessages, 'assistant', runLLM ? '...' : 'Follow-up answer will appear here when LLM is connected.');
+      const blocked = isBlocked(text);
+      const runLLM = isModelReady() && !blocked;
+      this.appendModalMessage(modalMessages, 'assistant', runLLM ? '...' : blocked ? REFUSAL_MESSAGE : 'Follow-up answer will appear here when LLM is connected.');
       this.scrollModalMessagesToBottom(modalMessages);
       if (modalInput) modalInput.value = '';
-      if (runLLM) {
+      if (blocked) {
+        this.chatMessages.push({ role: 'assistant', content: REFUSAL_MESSAGE });
+      } else if (runLLM) {
         const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
         const history = this.chatMessages.slice(0, -1);
         runInference(text, history)

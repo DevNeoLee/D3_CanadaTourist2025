@@ -9,6 +9,18 @@ export const SYSTEM_PROMPT =
   'Answer only questions about this dataset and the charts. ' +
   'Refuse off-topic, illegal, or age-inappropriate requests politely.';
 
+export const REFUSAL_MESSAGE = 'I can only help with questions about the Canada tourism data and charts.';
+
+const BLOCKLIST: RegExp[] = [
+  /\b(how to (make|build|hack|kill|hurt|steal|cheat)|illegal|weapon|drugs?|explosive)\b/i,
+  /\b(adult|porn|nude|nsfw|underage|child\s*sex)\b/i,
+];
+
+export function isBlocked(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  return BLOCKLIST.some((r) => r.test(t));
+}
+
 let transformersModule: TransformersModule | null = null;
 let loadPromise: Promise<TransformersModule> | null = null;
 let pipeline: unknown = null;
