@@ -222,38 +222,55 @@ img:hover {
     50% { opacity: 0; }
 }
 
-/* Right: AI pill (sparkle only, no "Send" text) */
+/* Right: AI pill – polished gradient, soft edges and shadow */
 .aiAskSend.aiPill {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background: rgba(24, 100, 170, 0.12);
-    border: 1px solid rgba(24, 100, 170, 0.3);
-    border-radius: 18px;
+    min-width: 56px;
+    width: auto;
+    height: 48px;
+    padding: 0 18px;
+    background: linear-gradient(145deg,
+        #ff6b6b 0%,
+        #ff5252 12%,
+        #5c6bc0 38%,
+        #448aff 50%,
+        #26a69a 72%,
+        #66bb6a 85%,
+        #9ccc65 96%,
+        #d4e157 100%);
+    border: none;
+    border-radius: 24px;
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition: filter 0.2s ease, box-shadow 0.2s ease;
+    /* Soft, neutral shadow so right/bottom look refined; subtle inner highlight for depth */
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 1px 3px rgba(0, 0, 0, 0.06),
+        0 4px 14px rgba(0, 0, 0, 0.1);
 }
 
 .aiAskSend.aiPill:hover {
-    background: rgba(24, 100, 170, 0.2);
-    border-color: rgba(24, 100, 170, 0.45);
+    filter: brightness(1.06);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+        0 2px 4px rgba(0, 0, 0, 0.07),
+        0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
-/* Modern shiny AI sparkle icon (SVG) */
+/* AI sparkle icon – white, scales with enlarged button */
 .aiIconSvg {
-    width: 20px;
-    height: 20px;
-    filter: drop-shadow(0 0 4px rgba(74, 144, 226, 0.5));
+    width: 26px;
+    height: 26px;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7));
     animation: aiSparkle 2.5s ease-in-out infinite;
 }
 
 @keyframes aiSparkle {
-    0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 4px rgba(74, 144, 226, 0.5)); }
-    50% { opacity: 0.95; transform: scale(1.06); filter: drop-shadow(0 0 8px rgba(123, 104, 238, 0.6)); }
+    0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7)); }
+    50% { opacity: 0.95; transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.9)); }
 }
 
 /* Inline output removed – answers will use a modal popup */
