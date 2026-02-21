@@ -54,6 +54,7 @@ export class DashboardController {
       
       // Setup event listeners
       this.setupEventListeners();
+      this.setupThickCaret();
       this.updateLoadingProgress(60);
       
       // Update charts
@@ -64,9 +65,10 @@ export class DashboardController {
       this.updateInfoDisplay();
       this.updateLoadingProgress(100);
       
-      // Loading complete
+      // Loading complete: hide overlay then focus chat so caret is active on load
       setTimeout(() => {
         this.hideLoading();
+        this.focusChatInput();
       }, 500);
 
     } catch (error) {
@@ -110,6 +112,36 @@ export class DashboardController {
       .append('text')
       .attr('class', 'info')
       .text(`${this.formatNumber(totalVisitors)} Tourists Have Visited Canada on ${monthName} ${year}`);
+  }
+
+  /**
+   * Position the thick fake caret at the input's cursor (browsers don't support caret width in CSS)
+   */
+  private setupThickCaret(): void {
+    const input = document.getElementById('aiAskInput') as HTMLInputElement | null;
+    const fake = document.getElementById('aiCaretFake') as HTMLElement | null;
+    if (!input || !fake) return;
+
+    const mirror = document.createElement('span');
+    mirror.setAttribute('aria-hidden', 'true');
+    mirror.style.cssText = 'position:absolute;left:-9999px;top:0;white-space:pre;visibility:hidden;pointer-events:none;';
+    document.body.appendChild(mirror);
+
+    const sync = (): void => {
+      const style = window.getComputedStyle(input);
+      mirror.style.font = style.font;
+      mirror.style.fontSize = style.fontSize;
+      mirror.style.fontFamily = style.fontFamily;
+      mirror.style.fontWeight = style.fontWeight;
+      mirror.style.letterSpacing = style.letterSpacing;
+      const text = (input.value || '').substring(0, input.selectionStart ?? 0);
+      const paddingLeft = parseFloat(style.paddingLeft) || 0;
+      const w = text.length === 0 ? 0 : (() => { mirror.textContent = text; return mirror.offsetWidth; })();
+      fake.style.left = `${paddingLeft + w}px`;
+    };
+
+    ['input', 'focus', 'click', 'keyup'].forEach(ev => input.addEventListener(ev, sync));
+    sync();
   }
 
   /**

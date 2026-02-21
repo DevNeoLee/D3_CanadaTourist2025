@@ -119,8 +119,8 @@ img:hover {
 .aiSummarySection {
     margin: 1rem auto 0.5rem auto;
     padding: 0.75rem 1rem;
-    max-width: 520px;
-    width: 100%;
+    width: 80%;
+    max-width: 80%;
     box-sizing: border-box;
     text-align: center;
     display: flex;
@@ -132,17 +132,20 @@ img:hover {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
     padding: 0.5rem 0.75rem 0.5rem 1rem;
     background: #fff;
     border: 1px solid #dadce0;
     border-radius: 24px;
     box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
     transition: box-shadow 0.2s ease;
+    /* box-sizing: border-box; */
 }
 
 .aiSearchBar:focus-within {
-    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28), 0 0 0 1px rgba(24, 100, 170, 0.25);
-    border-color: rgba(24, 100, 170, 0.4);
+    /* box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28), 0 0 0 1px rgba(24, 100, 170, 0.25); */
+    /* border-color: rgba(24, 100, 170, 0.4); */
 }
 
 .aiBarLeft {
@@ -158,23 +161,60 @@ img:hover {
     line-height: 1;
 }
 
+.aiAskInputCaretWrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+}
+
 .aiAskInput {
     flex: 1;
     padding: 0.4rem 0.5rem;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     border: none;
     background: transparent;
     font-family: inherit;
     min-width: 0;
     color: #202124;
+    letter-spacing: 1px;
+    caret-color: transparent;
 }
 
 .aiAskInput::placeholder {
     color: #80868b;
 }
 
+.aiAskInput:focus::placeholder {
+    color: transparent;
+}
+
 .aiAskInput:focus {
     outline: none;
+    /* box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.4); */
+}
+
+.aiCaretFake {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 1.55em;
+    background: linear-gradient(180deg, #00e5ff 0%, #00b8d4 35%, #e91e63 70%, #ad1457 100%);
+    border-radius: 2px;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.6), 0 0 12px rgba(233, 30, 99, 0.4);
+    animation: caretBlink 1.05s step-end infinite;
+    visibility: hidden;
+}
+
+.aiAskInputCaretWrap:focus-within .aiCaretFake {
+    visibility: visible;
+}
+
+@keyframes caretBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
 }
 
 /* Right: AI pill (sparkle only, no "Send" text) */
@@ -327,7 +367,8 @@ img:hover {
     .aiSummarySection {
         order: 2;
         margin-top: 1rem;
-        max-width: 480px;
+        width: 80%;
+        max-width: 80%;
         align-self: center;
     }
 
