@@ -335,6 +335,7 @@ img:hover {
  * Large screens: left section (bar + pie) and right section (map + controls + AI)
  * move horizontally with screen width only. No vertical layout change.
  * Bar and pie keep original spacing (pie absolute at 270px, 90px); sections are flex children.
+ * Container is centered with max-width so both sides get dynamic space on wider screens.
  */
 @media only screen and (min-width: 1385px) {
     body {
@@ -345,13 +346,14 @@ img:hover {
         display: flex;
         flex-direction: row;
         width: 100%;
-        max-width: 100%;
+        max-width: min(100%, 110rem);
         margin: 0 auto;
-        padding: 0 0.5rem;
+        padding: 0 clamp(1rem, 2.5vw, 2rem);
+        gap: clamp(1rem, 5vw, 4rem);
         align-items: flex-start;
     }
 
-    /* Left section: bar + pie grouped, content-sized, stays left */
+    /* Left section: bar + pie grouped, content-sized; space on its left comes from centered container + padding */
     .leftContainer {
         order: 0;
         flex: 0 0 auto;
