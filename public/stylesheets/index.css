@@ -164,6 +164,7 @@ img:hover {
     font-weight: 300;
     color: #5f6368;
     line-height: 1;
+    cursor: pointer;
 }
 
 .aiAskInputCaretWrap {

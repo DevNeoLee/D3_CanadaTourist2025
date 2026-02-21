@@ -4,8 +4,8 @@ import { MapChart } from '../components/MapChart';
 import { BarChart } from '../components/BarChart';
 import { PieChart } from '../components/PieChart';
 import { Year, Month, LoadingManager, TouristData } from '../types';
-import { MONTHS, PROVINCES } from '../constants';
-import { loadModel, whenReady, isModelReady, runInference, isBlocked, REFUSAL_MESSAGE } from '../services/LLMLoader';
+import { MONTHS, PROVINCES, PROVINCE_ALIASES } from '../constants';
+import { loadModel, whenReady, isModelReady, runChat, isOpenAIConfigured, isBlocked, REFUSAL_MESSAGE } from '../services/LLMLoader';
 
 export class DashboardController {
   private dataService: DataService;
@@ -16,6 +16,8 @@ export class DashboardController {
   private currentMonth: Month = 7;
   private chatMessages: { role: 'user' | 'assistant'; content: string }[] = [];
   private static readonly CHAT_STORAGE_KEY = 'canada-tourist-chat';
+  /** Cap chat history to avoid unbounded memory and crashes. Only last N messages kept. */
+  private static readonly MAX_CHAT_MESSAGES = 50;
 
   constructor() {
     this.dataService = DataService.getInstance();
@@ -193,6 +195,15 @@ export class DashboardController {
       return modalMessages;
     };
 
+    const openModalWithHistoryOnly = (): void => {
+      overlay.classList.add('chatModalOpen');
+      overlay.setAttribute('aria-hidden', 'false');
+      modalMessages.innerHTML = '';
+      this.chatMessages.forEach((m) => this.appendModalMessage(modalMessages, m.role, m.content));
+      this.scrollModalMessagesToBottom(modalMessages);
+      setTimeout(() => modalInput?.focus(), 100);
+    };
+
     const closeModal = (): void => {
       overlay.classList.remove('chatModalOpen');
       overlay.setAttribute('aria-hidden', 'true');
@@ -226,11 +237,11 @@ export class DashboardController {
           this.saveChatToStorage();
           this.scrollModalMessagesToBottom(container);
         } else if (runLLM) {
-          console.log('[Chat] Building context and calling LLM...');
           const assistantEl = container.lastElementChild as HTMLElement | null;
           const history = this.chatMessages.slice(0, -1);
-          const dataContext = this.buildDataContext();
-          runInference(text, history, dataContext)
+          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContext();
+          console.log('[Chat] Calling LLM, dataContext=', !!dataContext);
+          runChat(text, history, dataContext)
             .then((result) => {
               console.log('[Chat] LLM result received, length:', result?.length ?? 0, '| preview:', (result ?? '').slice(0, 80) + (result && result.length > 80 ? '...' : ''));
               this.chatMessages.push({ role: 'assistant', content: result });
@@ -274,11 +285,11 @@ export class DashboardController {
           this.saveChatToStorage();
           this.scrollModalMessagesToBottom(modalMessages);
         } else if (runLLM) {
-          console.log('[Chat] Building context and calling LLM...');
           const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
           const history = this.chatMessages.slice(0, -1);
-          const dataContext = this.buildDataContext();
-          runInference(text, history, dataContext)
+          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContext();
+          console.log('[Chat] Calling LLM, dataContext=', !!dataContext);
+          runChat(text, history, dataContext)
             .then((result) => {
               console.log('[Chat] LLM result received, length:', result?.length ?? 0, '| preview:', (result ?? '').slice(0, 80) + (result && result.length > 80 ? '...' : ''));
               this.chatMessages.push({ role: 'assistant', content: result });
@@ -303,6 +314,11 @@ export class DashboardController {
 
     const modalClear = document.querySelector('.chatModalClear');
     modalClear?.addEventListener('click', clearChat);
+
+    const plusButton = document.querySelector('.aiBarLeft');
+    plusButton?.addEventListener('click', () => {
+      if (this.chatMessages.length > 0) openModalWithHistoryOnly();
+    });
 
     mainSend?.addEventListener('click', sendFromMainBar);
     mainInput?.addEventListener('keydown', (e) => {
@@ -343,7 +359,7 @@ export class DashboardController {
   /**
    * Parse user prompt for year, month, and province using only filteredData semantics.
    * REF_DATE: first 4 chars = year (e.g. "2010"), 6th and 7th chars = month (e.g. "07").
-   * Province: match GEO against PROVINCES (longest name first to avoid "Columbia" matching British Columbia).
+   * Province: match PROVINCE_ALIASES (abbreviations, misspellings) then full PROVINCES names (longest first).
    */
   private parsePromptForDataQuery(prompt: string): { year?: number; month?: number; province?: string } | null {
     const q = prompt.trim().toLowerCase();
@@ -367,11 +383,23 @@ export class DashboardController {
       if (numMonth) month = parseInt(numMonth[1], 10);
     }
 
-    const provincesByLength = [...PROVINCES].sort((a, b) => b.length - a.length);
-    for (const p of provincesByLength) {
-      if (q.includes(p.toLowerCase())) {
-        province = p;
+    const aliasEntries = Object.entries(PROVINCE_ALIASES).sort((a, b) => b[0].length - a[0].length);
+    for (const [alias, canonical] of aliasEntries) {
+      const match = alias.length <= 3
+        ? new RegExp('\\b' + alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(q)
+        : q.includes(alias);
+      if (match) {
+        province = canonical;
         break;
+      }
+    }
+    if (province === undefined) {
+      const provincesByLength = [...PROVINCES].sort((a, b) => b.length - a.length);
+      for (const p of provincesByLength) {
+        if (q.includes(p.toLowerCase())) {
+          province = p;
+          break;
+        }
       }
     }
 
@@ -419,6 +447,18 @@ export class DashboardController {
     const answer = `In ${monthName} ${year} there were ${this.formatNumber(total)} tourists in Canada.`;
     console.log('[Chat] answerFromFilteredDataByRule: matched total for', monthName, year, '->', answer.slice(0, 60) + '...');
     return answer;
+  }
+
+  /**
+   * True when the message looks like casual chat only (greetings, thanks, bye) so we skip the big dataset block and let the LLM reply naturally.
+   */
+  private isLikelyCasualOnly(text: string): boolean {
+    const t = text.trim().toLowerCase();
+    if (t.length > 50) return false;
+    const casual = /^(hi|hello|hey|thanks|thank you|bye|goodbye|how are you|what'?s up|yo|sup)\s*[?!.]?$/i;
+    if (casual.test(t)) return true;
+    if (t.length <= 20 && !/\d{4}|tourist|visitor|province|ontario|quebec|how many|total|canada/.test(t)) return true;
+    return false;
   }
 
   /**
@@ -506,6 +546,15 @@ export class DashboardController {
     return line || null;
   }
 
+  /**
+   * Trim chat history to last MAX_CHAT_MESSAGES so memory and storage stay bounded.
+   */
+  private trimChatHistory(): void {
+    if (this.chatMessages.length <= DashboardController.MAX_CHAT_MESSAGES) return;
+    this.chatMessages = this.chatMessages.slice(-DashboardController.MAX_CHAT_MESSAGES);
+    console.log('[Chat] trimChatHistory: trimmed to last', DashboardController.MAX_CHAT_MESSAGES, 'messages');
+  }
+
   private loadChatFromStorage(): void {
     try {
       const raw = localStorage.getItem(DashboardController.CHAT_STORAGE_KEY);
@@ -516,7 +565,8 @@ export class DashboardController {
       const parsed = JSON.parse(raw) as { role: string; content: string }[];
       if (Array.isArray(parsed) && parsed.every((m) => m && typeof m.role === 'string' && typeof m.content === 'string')) {
         this.chatMessages = parsed;
-        console.log('[Chat] loadChatFromStorage: restored', parsed.length, 'messages');
+        this.trimChatHistory();
+        console.log('[Chat] loadChatFromStorage: restored', this.chatMessages.length, 'messages');
       }
     } catch {
       /* ignore */
@@ -525,6 +575,7 @@ export class DashboardController {
 
   private saveChatToStorage(): void {
     try {
+      this.trimChatHistory();
       localStorage.setItem(DashboardController.CHAT_STORAGE_KEY, JSON.stringify(this.chatMessages));
     } catch {
       /* ignore */
@@ -544,7 +595,12 @@ export class DashboardController {
     };
 
     setDisabled(true);
-    console.log('[Chat] setupLLMLoading: loading model...');
+    if (isOpenAIConfigured()) {
+      console.log('[Chat] setupLLMLoading: OpenAI API configured, chat input enabled.');
+      setDisabled(false);
+      return;
+    }
+    console.log('[Chat] setupLLMLoading: loading local model...');
     loadModel();
     whenReady()
       .then(() => {

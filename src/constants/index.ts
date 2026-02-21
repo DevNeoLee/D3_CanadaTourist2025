@@ -15,6 +15,51 @@ export const PROVINCES = [
   "Nunavut"
 ] as const;
 
+/**
+ * Abbreviations and common misspellings -> canonical province name.
+ * Used to guess province from "ON", "BC", "Quebec" misspelled, etc.
+ */
+export const PROVINCE_ALIASES: Record<string, string> = {
+  bc: 'British Columbia',
+  'b.c.': 'British Columbia',
+  'british columbia': 'British Columbia',
+  on: 'Ontario',
+  ont: 'Ontario',
+  ontario: 'Ontario',
+  ontraio: 'Ontario',
+  qc: 'Quebec',
+  que: 'Quebec',
+  quebec: 'Quebec',
+  quebeck: 'Quebec',
+  ab: 'Alberta',
+  alberta: 'Alberta',
+  sk: 'Saskatchewan',
+  sask: 'Saskatchewan',
+  saskatchewan: 'Saskatchewan',
+  mb: 'Manitoba',
+  manitoba: 'Manitoba',
+  ns: 'Nova Scotia',
+  'nova scotia': 'Nova Scotia',
+  nb: 'New Brunswick',
+  'new brunswick': 'New Brunswick',
+  pei: 'Prince Edward Island',
+  'p.e.i.': 'Prince Edward Island',
+  pe: 'Prince Edward Island',
+  'prince edward island': 'Prince Edward Island',
+  nl: 'Newfoundland and Labrador',
+  nfld: 'Newfoundland and Labrador',
+  nf: 'Newfoundland and Labrador',
+  newfoundland: 'Newfoundland and Labrador',
+  'newfoundland and labrador': 'Newfoundland and Labrador',
+  labrador: 'Newfoundland and Labrador',
+  yt: 'Yukon',
+  yuk: 'Yukon',
+  yukon: 'Yukon',
+  nu: 'Nunavut',
+  nvt: 'Nunavut',
+  nunavut: 'Nunavut',
+};
+
 export const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'June',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
