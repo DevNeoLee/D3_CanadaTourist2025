@@ -113,6 +113,18 @@ export class DashboardController {
   }
 
   /**
+   * Focus the chat input to encourage user to ask the LLM about the updated charts
+   */
+  private focusChatInput(): void {
+    setTimeout(() => {
+      const chatInput = document.getElementById('aiAskInput') as HTMLInputElement | null;
+      if (chatInput) {
+        chatInput.focus();
+      }
+    }, 0);
+  }
+
+  /**
    * Setup event listeners
    */
   private setupEventListeners(): void {
@@ -124,6 +136,7 @@ export class DashboardController {
         this.currentYear = parseInt(target.value);
         this.updateCharts();
         this.updateInfoDisplay();
+        this.focusChatInput();
       });
     }
 
@@ -142,6 +155,7 @@ export class DashboardController {
 
         this.updateCharts();
         this.updateInfoDisplay();
+        this.focusChatInput();
       });
     }
 

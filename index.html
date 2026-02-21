@@ -80,26 +80,33 @@
                 </div>
             </div>
 
-            <!-- Option A: AI summary + chat right under controller, squeezed (no extra height) -->
-            <section class="aiSummarySection" aria-labelledby="ai-summary-heading">
-                <div class="aiSummaryRow">
-                    <h2 id="ai-summary-heading" class="aiSummaryHeading">In plain English</h2>
-                    <button type="button" class="aiSummaryRegenerate" aria-label="Generate or regenerate AI summary" style="display: none;">Generate with AI</button>
+            <!-- AI chat: minimal bar – icons only, no visible text or button label -->
+            <section class="aiSummarySection" aria-label="AI chat about this data">
+                <div class="aiSearchBar">
+                    <span class="aiBarLeft" aria-hidden="true" title="Add">+</span>
+                    <label for="aiAskInput" class="visually-hidden">Ask about this data</label>
+                    <input type="text" id="aiAskInput" class="aiAskInput" placeholder="Talk to LLM about charts?" autocomplete="off">
+                    <button type="button" class="aiAskSend aiPill" aria-label="Send or AI mode">
+                        <svg class="aiIconSvg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <defs>
+                                <linearGradient id="aiSparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#4a90e2"/>
+                                    <stop offset="50%" style="stop-color:#7b68ee"/>
+                                    <stop offset="100%" style="stop-color:#4a90e2"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#aiSparkleGrad)"/>
+                            <path d="M19 14L19.8 16.2L22 17L19.8 17.8L19 20L18.2 17.8L16 17L18.2 16.2L19 14Z" fill="url(#aiSparkleGrad)" opacity="0.9"/>
+                            <path d="M5 16L5.6 17.6L7.2 18L5.6 18.4L5 20L4.4 18.4L2.8 18L4.4 17.6L5 16Z" fill="url(#aiSparkleGrad)" opacity="0.8"/>
+                        </svg>
+                    </button>
                 </div>
-                <p class="aiSummaryText" role="region" aria-live="polite">
+                <!-- Output will be shown in a modal popup instead -->
+                <!-- Hidden: summary and regenerate for future use -->
+                <p class="aiSummaryText aiSummaryTextHidden" role="region" aria-live="polite">
                     <span class="aiSummaryPlaceholder">Select a year and month to see a summary.</span>
                 </p>
-                <details class="aiAskDetails" id="ai-ask-details">
-                    <summary class="aiAskSummary">Ask about this data</summary>
-                    <div class="aiAskPanel">
-                        <div class="aiAskOutput" role="status" aria-live="polite"><span class="aiAskPlaceholder">Answer appears here.</span></div>
-                        <div class="aiAskInputWrap">
-                            <label for="aiAskInput" class="visually-hidden">Ask a question about the current data</label>
-                            <input type="text" id="aiAskInput" class="aiAskInput" placeholder="e.g. Which province had the most visitors?" autocomplete="off">
-                            <button type="button" class="aiAskSend" aria-label="Send question">Send</button>
-                        </div>
-                    </div>
-                </details>
+                <button type="button" class="aiSummaryRegenerate" aria-label="Generate with AI" style="display: none;">Generate with AI</button>
             </section>
 
             <div class="mapWrap">
