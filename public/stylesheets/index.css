@@ -196,7 +196,11 @@ img:hover {
 
 .aiAskInput:focus {
     outline: none;
-    /* box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.4); */
+}
+
+.aiAskInput:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
 }
 
 .aiCaretFake {
@@ -260,7 +264,31 @@ img:hover {
         0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
-/* AI sparkle icon – white, scales with enlarged button */
+.aiAskSend.aiPill:disabled {
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.aiAskSend.aiPill.llm-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.aiAskSend.aiPill.llm-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.2) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: llmShimmer 1.8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes llmShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
 .aiIconSvg {
     width: 26px;
     height: 26px;

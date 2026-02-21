@@ -5,6 +5,7 @@ import { BarChart } from '../components/BarChart';
 import { PieChart } from '../components/PieChart';
 import { Year, Month, LoadingManager } from '../types';
 import { MONTHS } from '../constants';
+import { loadModel, whenReady } from '../services/LLMLoader';
 
 export class DashboardController {
   private dataService: DataService;
@@ -56,6 +57,7 @@ export class DashboardController {
       this.setupEventListeners();
       this.setupThickCaret();
       this.setupChatModal();
+      this.setupLLMLoading();
       this.updateLoadingProgress(60);
       
       // Update charts
@@ -237,9 +239,23 @@ export class DashboardController {
     container.scrollTop = container.scrollHeight;
   }
 
-  /**
-   * Setup event listeners
-   */
+  private setupLLMLoading(): void {
+    const mainInput = document.getElementById('aiAskInput') as HTMLInputElement | null;
+    const mainPill = document.querySelector('.aiSummarySection .aiAskSend.aiPill') as HTMLButtonElement | null;
+    if (!mainInput || !mainPill) return;
+
+    const setDisabled = (disabled: boolean) => {
+      mainInput.disabled = disabled;
+      mainPill.disabled = disabled;
+      if (disabled) mainPill.classList.add('llm-loading');
+      else mainPill.classList.remove('llm-loading');
+    };
+
+    setDisabled(true);
+    loadModel();
+    whenReady().then(() => setDisabled(false)).catch(() => setDisabled(false));
+  }
+
   private setupEventListeners(): void {
     // Year selection event
     const yearSelect = document.querySelector('.select') as HTMLSelectElement;

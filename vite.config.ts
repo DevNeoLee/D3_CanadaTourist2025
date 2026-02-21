@@ -19,6 +19,6 @@ export default defineConfig({
     open: true
   },
   optimizeDeps: {
-    include: ['d3']
+    include: ['d3', '@huggingface/transformers']
   }
 }); 
