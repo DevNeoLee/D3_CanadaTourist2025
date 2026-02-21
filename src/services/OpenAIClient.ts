@@ -50,7 +50,7 @@ export async function remoteChat(
   if (options?.systemPrompt || options?.dataContext) {
     const systemParts: string[] = [];
     if (options.systemPrompt?.trim()) systemParts.push(options.systemPrompt.trim());
-    if (options.dataContext?.trim()) systemParts.push('---\nDataset summary (use only these numbers for tourism/visitor questions):\n' + options.dataContext.trim());
+    if (options.dataContext?.trim()) systemParts.push('---\nDataset summary (use ONLY these numbers for tourism/visitor questions; you do not see the user\'s screen):\n' + options.dataContext.trim());
     allMessages = [{ role: 'system', content: systemParts.join('\n\n') }, ...conversationMessages];
   }
 

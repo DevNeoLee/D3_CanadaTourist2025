@@ -239,7 +239,7 @@ export class DashboardController {
         } else if (runLLM) {
           const assistantEl = container.lastElementChild as HTMLElement | null;
           const history = this.chatMessages.slice(0, -1);
-          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContext();
+          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContextForPrompt(text);
           console.log('[Chat] Calling LLM, dataContext=', !!dataContext);
           runChat(text, history, dataContext)
             .then((result) => {
@@ -287,7 +287,7 @@ export class DashboardController {
         } else if (runLLM) {
           const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
           const history = this.chatMessages.slice(0, -1);
-          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContext();
+          const dataContext = this.isLikelyCasualOnly(text) ? undefined : this.buildDataContextForPrompt(text);
           console.log('[Chat] Calling LLM, dataContext=', !!dataContext);
           runChat(text, history, dataContext)
             .then((result) => {
@@ -409,55 +409,79 @@ export class DashboardController {
 
   /**
    * Answer from filteredData only: match REF_DATE (first 4 = year, 6th 7th = month) and GEO when province given; return VALUE.
-   * Runs before LLM so we give a correct numeric answer when the prompt describes a specific year/month/province.
+   * Supports year+month, or year-only (all 12 months summed). Runs before LLM so we give a correct numeric answer.
    */
   private answerFromFilteredDataByRule(prompt: string): string | null {
     if (!this.dataService.isDataLoaded()) return null;
     const parsed = this.parsePromptForDataQuery(prompt);
     if (!parsed) return null;
     const { year, month, province } = parsed;
-    if (year === undefined || month === undefined) return null;
-    if (year < 2000 || year > 2019 || month < 1 || month > 12) return null;
+    if (year === undefined || year < 2010 || year > 2019) return null;
 
     const filteredData = this.dataService.getFilteredData() as readonly TouristData[];
     const yearStr = String(year);
-    const monthStr = String(month).padStart(2, '0');
+
+    if (month != null && month >= 1 && month <= 12) {
+      const monthStr = String(month).padStart(2, '0');
+      const rows = (filteredData as TouristData[]).filter((row) => {
+        const refYear = row.REF_DATE.slice(0, 4);
+        const refMonth = row.REF_DATE.length >= 7 ? row.REF_DATE.slice(5, 7) : '';
+        if (refYear !== yearStr || refMonth !== monthStr) return false;
+        if (province && row.GEO !== province) return false;
+        return true;
+      });
+      if (rows.length === 0) {
+        console.log('[Chat] answerFromFilteredDataByRule: no matching rows for', yearStr, monthStr, province ?? 'total');
+        return null;
+      }
+      const monthName = MONTHS[month - 1];
+      if (province) {
+        if (rows.length > 1) return null;
+        const value = parseInt(rows[0].VALUE, 10);
+        const answer = `In ${monthName} ${year} there were ${this.formatNumber(value)} tourists in ${province}.`;
+        console.log('[Chat] answerFromFilteredDataByRule: matched province', province, '->', answer.slice(0, 60) + '...');
+        return answer;
+      }
+      const total = rows.reduce((sum, row) => sum + parseInt(row.VALUE, 10), 0);
+      const answer = `In ${monthName} ${year} there were ${this.formatNumber(total)} tourists in Canada.`;
+      console.log('[Chat] answerFromFilteredDataByRule: matched total for', monthName, year, '->', answer.slice(0, 60) + '...');
+      return answer;
+    }
+
+    /* Year-only: sum all 12 months for that year (and optional province). */
     const rows = (filteredData as TouristData[]).filter((row) => {
-      const refYear = row.REF_DATE.slice(0, 4);
-      const refMonth = row.REF_DATE.length >= 7 ? row.REF_DATE.slice(5, 7) : '';
-      if (refYear !== yearStr || refMonth !== monthStr) return false;
+      if (row.REF_DATE.slice(0, 4) !== yearStr) return false;
       if (province && row.GEO !== province) return false;
       return true;
     });
-
     if (rows.length === 0) {
-      console.log('[Chat] answerFromFilteredDataByRule: no matching rows for', yearStr, monthStr, province ?? 'total');
+      console.log('[Chat] answerFromFilteredDataByRule: no rows for year', yearStr, province ?? '');
       return null;
     }
-
-    const monthName = MONTHS[month - 1];
-    if (province) {
-      if (rows.length > 1) return null;
-      const value = parseInt(rows[0].VALUE, 10);
-      const answer = `In ${monthName} ${year} there were ${this.formatNumber(value)} tourists in ${province}.`;
-      console.log('[Chat] answerFromFilteredDataByRule: matched province', province, '->', answer.slice(0, 60) + '...');
-      return answer;
-    }
-    const total = rows.reduce((sum, row) => sum + parseInt(row.VALUE, 10), 0);
-    const answer = `In ${monthName} ${year} there were ${this.formatNumber(total)} tourists in Canada.`;
-    console.log('[Chat] answerFromFilteredDataByRule: matched total for', monthName, year, '->', answer.slice(0, 60) + '...');
+    const yearTotal = rows.reduce((sum, row) => sum + parseInt(row.VALUE, 10), 0);
+    const scope = province ? province : 'Canada';
+    const answer = `In ${year} there were ${this.formatNumber(yearTotal)} tourists in ${scope} (all months combined).`;
+    console.log('[Chat] answerFromFilteredDataByRule: matched year-only', year, '->', answer.slice(0, 60) + '...');
     return answer;
   }
 
   /**
    * True when the message looks like casual chat only (greetings, thanks, bye) so we skip the big dataset block and let the LLM reply naturally.
    */
+  /**
+   * True when the message is only casual chat (greetings, thanks, bye) so we skip the dataset block and let the LLM reply naturally.
+   * Any data-related hint (year, province, numbers, compare, etc.) forces dataContext to be sent so Groq uses our filtered data.
+   */
   private isLikelyCasualOnly(text: string): boolean {
     const t = text.trim().toLowerCase();
     if (t.length > 50) return false;
     const casual = /^(hi|hello|hey|thanks|thank you|bye|goodbye|how are you|what'?s up|yo|sup)\s*[?!.]?$/i;
     if (casual.test(t)) return true;
-    if (t.length <= 20 && !/\d{4}|tourist|visitor|province|ontario|quebec|how many|total|canada/.test(t)) return true;
+    const dataRelated =
+      /\d{4}|tourist|visitor|province|ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland|pei|prince edward|yukon|nwt|nunavut/i;
+    const dataRelatedShort = /\b(bc|ab|on|qc|mb|sk|ns|nb|nl|pe)\b|how many|total|canada|number|compare|which|highest|lowest|month|year|july|august|january|february|march|april|may|june|september|october|november|december/i;
+    if (dataRelated.test(t) || dataRelatedShort.test(t)) return false;
+    if (t.length <= 20) return true;
     return false;
   }
 
@@ -466,30 +490,79 @@ export class DashboardController {
    * Uses only getSortedMonthlyData / getTotalVisitors — never raw CSV. Includes schema description so the LLM knows it only has this mapped set.
    */
   private buildDataContext(): string {
-    console.log('[Chat] buildDataContext() called for current view:', MONTHS[this.currentMonth - 1], 2000 + this.currentYear);
+    return this.buildDataContextForPeriod(2000 + this.currentYear, this.currentMonth);
+  }
+
+  /**
+   * Build data context for a specific calendar year and month (1-12).
+   * So Groq receives the exact filtered slice the user is asking about, not only the current page view.
+   */
+  private buildDataContextForPeriod(calendarYear: number, month: number): string {
     if (!this.dataService.isDataLoaded()) {
-      console.log('[Chat] buildDataContext: data not loaded, returning fallback.');
+      console.log('[Chat] buildDataContextForPeriod: data not loaded, returning fallback.');
       return 'Data not loaded.';
     }
-    const sorted = this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
-    const total = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
-    const year = 2000 + this.currentYear;
-    const monthName = MONTHS[this.currentMonth - 1];
+    const internalYear = calendarYear - 2000;
+    if (internalYear < 0 || internalYear > 19 || month < 1 || month > 12) {
+      console.log('[Chat] buildDataContextForPeriod: out of range', calendarYear, month, '-> using current view.');
+      return this.buildDataContextForPeriod(2000 + this.currentYear, this.currentMonth);
+    }
+    const sorted = this.dataService.getSortedMonthlyData(internalYear as Year, month as Month);
+    const total = this.dataService.getTotalVisitors(internalYear as Year, month as Month);
+    const monthName = MONTHS[month - 1];
     const totalStr = this.formatNumber(total);
     const lines: string[] = [
       this.dataService.getMappedDatasetDescription(),
       '---',
-      `Current view (one slice of the mapped dataset): ${monthName} ${year}.`,
+      `Dataset slice (use only these numbers): ${monthName} ${calendarYear}.`,
       `Total visitors: ${totalStr}.`,
-      `Use this exact sentence when asked "how many tourists" or "total" for this period: In ${monthName} ${year} there were ${totalStr} tourists in Canada.`,
+      `For "how many tourists" or "total" for this period, use: In ${monthName} ${calendarYear} there were ${totalStr} tourists in Canada.`,
       'By province (descending):'
     ];
     sorted.forEach((row) => {
       lines.push(`  ${row.GEO}: ${this.formatNumber(parseInt(row.VALUE, 10))}`);
     });
     const context = lines.join('\n');
-    console.log('[Chat] buildDataContext: total=', totalStr, '| provinces=', sorted.length, '| context length (chars)=', context.length);
+    console.log('[Chat] buildDataContextForPeriod:', monthName, calendarYear, '| total=', totalStr, '| provinces=', sorted.length, '| context length=', context.length);
     return context;
+  }
+
+  /**
+   * Build data context for the full calendar year (all 12 months summed). Used when user asks e.g. "how many in 2011" without a month.
+   */
+  private buildDataContextForYear(calendarYear: number): string {
+    if (!this.dataService.isDataLoaded()) return 'Data not loaded.';
+    const internalYear = calendarYear - 2000;
+    if (internalYear < 0 || internalYear > 19) return this.buildDataContext();
+    let yearTotal = 0;
+    const byMonth: string[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const total = this.dataService.getTotalVisitors(internalYear as Year, m as Month);
+      yearTotal += total;
+      byMonth.push(`  ${MONTHS[m - 1]}: ${this.formatNumber(total)}`);
+    }
+    const lines: string[] = [
+      this.dataService.getMappedDatasetDescription(),
+      '---',
+      `Dataset slice: full year ${calendarYear} (all months).`,
+      `Total visitors in ${calendarYear}: ${this.formatNumber(yearTotal)}.`,
+      `For "how many visited in ${calendarYear}" or "total for ${calendarYear}", use: In ${calendarYear} there were ${this.formatNumber(yearTotal)} tourists in Canada (all months combined).`,
+      'By month:',
+      ...byMonth
+    ];
+    return lines.join('\n');
+  }
+
+  /**
+   * Build data context for the LLM based on what the user asked: year+month -> that month; year-only -> full year; else current view.
+   */
+  private buildDataContextForPrompt(prompt: string): string {
+    const parsed = this.parsePromptForDataQuery(prompt);
+    if (parsed?.year == null || parsed.year < 2010 || parsed.year > 2019) return this.buildDataContext();
+    if (parsed.month != null && parsed.month >= 1 && parsed.month <= 12) {
+      return this.buildDataContextForPeriod(parsed.year, parsed.month);
+    }
+    return this.buildDataContextForYear(parsed.year);
   }
 
   /**
