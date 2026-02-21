@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import { TouristData, Year, Month } from '../types';
 import { DataProcessor } from '../utils/dataProcessor';
+import { MAPPED_DATASET_DESCRIPTION } from './MappedDataset';
 
 export class DataService {
   private static instance: DataService;
@@ -67,7 +68,14 @@ export class DataService {
   }
 
   /**
-   * Access raw data (read-only)
+   * Description of the mapped dataset for the LLM. Charts and LLM use only this mapped data (filtered, by year/month/province); never raw CSV.
+   */
+  public getMappedDatasetDescription(): string {
+    return MAPPED_DATASET_DESCRIPTION;
+  }
+
+  /**
+   * Access raw data (read-only). Not used for charts or LLM; only for internal/debug use.
    */
   public getRawData(): readonly TouristData[] {
     return this.rawData;

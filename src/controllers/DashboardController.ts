@@ -3,8 +3,8 @@ import { DataService } from '../services/DataService';
 import { MapChart } from '../components/MapChart';
 import { BarChart } from '../components/BarChart';
 import { PieChart } from '../components/PieChart';
-import { Year, Month, LoadingManager } from '../types';
-import { MONTHS } from '../constants';
+import { Year, Month, LoadingManager, TouristData } from '../types';
+import { MONTHS, PROVINCES } from '../constants';
 import { loadModel, whenReady, isModelReady, runInference, isBlocked, REFUSAL_MESSAGE } from '../services/LLMLoader';
 
 export class DashboardController {
@@ -75,7 +75,7 @@ export class DashboardController {
         this.hideLoading();
         this.focusChatInput();
       }, 500);
-
+      console.log('dataService: ', this.dataService)
     } catch (error) {
       console.error('Failed to initialize dashboard:', error);
       this.showError('Failed to load data. Please refresh the page.');
@@ -90,7 +90,7 @@ export class DashboardController {
     try {
       const sortedData = this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
       const totalVisitors = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
-
+      console.log('sortedData: ', sortedData)
       // Render all charts in parallel
       await Promise.all([
         this.mapChart.render(sortedData),
@@ -176,6 +176,7 @@ export class DashboardController {
     if (!overlay || !modalMessages) return;
 
     this.loadChatFromStorage();
+    console.log('[Chat] setupChatModal: loaded from storage, message count=', this.chatMessages.length);
 
     const openModal = (firstQuestion: string, runLLM: boolean): HTMLElement | null => {
       overlay.classList.add('chatModalOpen');
@@ -200,61 +201,97 @@ export class DashboardController {
     const sendFromMainBar = (): void => {
       const text = mainInput?.value?.trim() ?? '';
       if (!text) return;
+      console.log('[Chat] User message (main bar):', text);
       this.chatMessages.push({ role: 'user', content: text });
       const blocked = isBlocked(text);
       const runLLM = isModelReady() && !blocked;
+      console.log('[Chat] Blocked:', blocked, '| Model ready:', isModelReady(), '| Will run LLM:', runLLM);
       const container = openModal(text, runLLM);
       if (mainInput) mainInput.value = '';
       if (blocked && container) {
+        console.log('[Chat] Showing blocklist refusal (no LLM).');
         const assistantEl = container.lastElementChild as HTMLElement | null;
         if (assistantEl) assistantEl.textContent = REFUSAL_MESSAGE;
         this.chatMessages.push({ role: 'assistant', content: REFUSAL_MESSAGE });
         this.saveChatToStorage();
         this.scrollModalMessagesToBottom(container);
-      } else if (runLLM && container) {
-        const assistantEl = container.lastElementChild as HTMLElement | null;
-        const history = this.chatMessages.slice(0, -1);
-        runInference(text, history)
-          .then((result) => {
-            this.chatMessages.push({ role: 'assistant', content: result });
-            this.saveChatToStorage();
-            if (assistantEl) assistantEl.textContent = result || 'No response.';
-            this.scrollModalMessagesToBottom(container);
-          })
-          .catch(() => {
-            if (assistantEl) assistantEl.textContent = 'Sorry, something went wrong.';
-            this.scrollModalMessagesToBottom(container);
-          });
+      } else if (container) {
+        const ruleAnswer = this.answerFromFilteredDataByRule(text);
+        const dataAnswer = ruleAnswer ?? this.maybeAnswerTotalFromData(text);
+        if (dataAnswer !== null) {
+          console.log('[Chat] Using rule-based data answer (no LLM):', dataAnswer.slice(0, 60) + '...');
+          const assistantEl = container.lastElementChild as HTMLElement | null;
+          if (assistantEl) assistantEl.textContent = dataAnswer;
+          this.chatMessages.push({ role: 'assistant', content: dataAnswer });
+          this.saveChatToStorage();
+          this.scrollModalMessagesToBottom(container);
+        } else if (runLLM) {
+          console.log('[Chat] Building context and calling LLM...');
+          const assistantEl = container.lastElementChild as HTMLElement | null;
+          const history = this.chatMessages.slice(0, -1);
+          const dataContext = this.buildDataContext();
+          runInference(text, history, dataContext)
+            .then((result) => {
+              console.log('[Chat] LLM result received, length:', result?.length ?? 0, '| preview:', (result ?? '').slice(0, 80) + (result && result.length > 80 ? '...' : ''));
+              this.chatMessages.push({ role: 'assistant', content: result });
+              this.saveChatToStorage();
+              if (assistantEl) assistantEl.textContent = result || 'No response.';
+              this.scrollModalMessagesToBottom(container);
+            })
+            .catch((err) => {
+              console.log('[Chat] LLM error:', err);
+              if (assistantEl) assistantEl.textContent = 'Sorry, something went wrong.';
+              this.scrollModalMessagesToBottom(container);
+            });
+        }
       }
     };
 
     const sendFromModal = (): void => {
       const text = modalInput?.value?.trim() ?? '';
       if (!text) return;
+      console.log('[Chat] User message (modal):', text);
       this.chatMessages.push({ role: 'user', content: text });
       this.appendModalMessage(modalMessages, 'user', text);
       const blocked = isBlocked(text);
       const runLLM = isModelReady() && !blocked;
+      console.log('[Chat] Blocked:', blocked, '| Model ready:', isModelReady(), '| Will run LLM:', runLLM);
       this.appendModalMessage(modalMessages, 'assistant', runLLM ? '...' : blocked ? REFUSAL_MESSAGE : 'Follow-up answer will appear here when LLM is connected.');
       this.scrollModalMessagesToBottom(modalMessages);
       if (modalInput) modalInput.value = '';
       if (blocked) {
+        console.log('[Chat] Showing blocklist refusal (no LLM).');
         this.chatMessages.push({ role: 'assistant', content: REFUSAL_MESSAGE });
         this.saveChatToStorage();
-      } else if (runLLM) {
-        const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
-        const history = this.chatMessages.slice(0, -1);
-        runInference(text, history)
-          .then((result) => {
-            this.chatMessages.push({ role: 'assistant', content: result });
-            this.saveChatToStorage();
-            if (assistantEl) assistantEl.textContent = result || 'No response.';
-            this.scrollModalMessagesToBottom(modalMessages);
-          })
-          .catch(() => {
-            if (assistantEl) assistantEl.textContent = 'Sorry, something went wrong.';
-            this.scrollModalMessagesToBottom(modalMessages);
-          });
+      } else {
+        const ruleAnswer = this.answerFromFilteredDataByRule(text);
+        const dataAnswer = ruleAnswer ?? this.maybeAnswerTotalFromData(text);
+        if (dataAnswer !== null) {
+          console.log('[Chat] Using rule-based data answer (no LLM):', dataAnswer.slice(0, 60) + '...');
+          const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
+          if (assistantEl) assistantEl.textContent = dataAnswer;
+          this.chatMessages.push({ role: 'assistant', content: dataAnswer });
+          this.saveChatToStorage();
+          this.scrollModalMessagesToBottom(modalMessages);
+        } else if (runLLM) {
+          console.log('[Chat] Building context and calling LLM...');
+          const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
+          const history = this.chatMessages.slice(0, -1);
+          const dataContext = this.buildDataContext();
+          runInference(text, history, dataContext)
+            .then((result) => {
+              console.log('[Chat] LLM result received, length:', result?.length ?? 0, '| preview:', (result ?? '').slice(0, 80) + (result && result.length > 80 ? '...' : ''));
+              this.chatMessages.push({ role: 'assistant', content: result });
+              this.saveChatToStorage();
+              if (assistantEl) assistantEl.textContent = result || 'No response.';
+              this.scrollModalMessagesToBottom(modalMessages);
+            })
+            .catch((err) => {
+              console.log('[Chat] LLM error:', err);
+              if (assistantEl) assistantEl.textContent = 'Sorry, something went wrong.';
+              this.scrollModalMessagesToBottom(modalMessages);
+            });
+        }
       }
     };
 
@@ -303,13 +340,183 @@ export class DashboardController {
     container.scrollTop = container.scrollHeight;
   }
 
+  /**
+   * Parse user prompt for year, month, and province using only filteredData semantics.
+   * REF_DATE: first 4 chars = year (e.g. "2010"), 6th and 7th chars = month (e.g. "07").
+   * Province: match GEO against PROVINCES (longest name first to avoid "Columbia" matching British Columbia).
+   */
+  private parsePromptForDataQuery(prompt: string): { year?: number; month?: number; province?: string } | null {
+    const q = prompt.trim().toLowerCase();
+    let year: number | undefined;
+    let month: number | undefined;
+    let province: string | undefined;
+
+    const yearMatch = q.match(/\b(200\d|201\d)\b/);
+    if (yearMatch) year = parseInt(yearMatch[1], 10);
+
+    const monthNamesShort = MONTHS.map((m) => m.toLowerCase());
+    const monthNamesFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    for (let i = 0; i < 12; i++) {
+      if (q.includes(monthNamesShort[i]) || q.includes(monthNamesFull[i])) {
+        month = i + 1;
+        break;
+      }
+    }
+    if (month === undefined) {
+      const numMonth = q.match(/\b(1[0-2]|[1-9])\b/);
+      if (numMonth) month = parseInt(numMonth[1], 10);
+    }
+
+    const provincesByLength = [...PROVINCES].sort((a, b) => b.length - a.length);
+    for (const p of provincesByLength) {
+      if (q.includes(p.toLowerCase())) {
+        province = p;
+        break;
+      }
+    }
+
+    if (year === undefined && month === undefined && province === undefined) return null;
+    return { year, month, province };
+  }
+
+  /**
+   * Answer from filteredData only: match REF_DATE (first 4 = year, 6th 7th = month) and GEO when province given; return VALUE.
+   * Runs before LLM so we give a correct numeric answer when the prompt describes a specific year/month/province.
+   */
+  private answerFromFilteredDataByRule(prompt: string): string | null {
+    if (!this.dataService.isDataLoaded()) return null;
+    const parsed = this.parsePromptForDataQuery(prompt);
+    if (!parsed) return null;
+    const { year, month, province } = parsed;
+    if (year === undefined || month === undefined) return null;
+    if (year < 2000 || year > 2019 || month < 1 || month > 12) return null;
+
+    const filteredData = this.dataService.getFilteredData() as readonly TouristData[];
+    const yearStr = String(year);
+    const monthStr = String(month).padStart(2, '0');
+    const rows = (filteredData as TouristData[]).filter((row) => {
+      const refYear = row.REF_DATE.slice(0, 4);
+      const refMonth = row.REF_DATE.length >= 7 ? row.REF_DATE.slice(5, 7) : '';
+      if (refYear !== yearStr || refMonth !== monthStr) return false;
+      if (province && row.GEO !== province) return false;
+      return true;
+    });
+
+    if (rows.length === 0) {
+      console.log('[Chat] answerFromFilteredDataByRule: no matching rows for', yearStr, monthStr, province ?? 'total');
+      return null;
+    }
+
+    const monthName = MONTHS[month - 1];
+    if (province) {
+      if (rows.length > 1) return null;
+      const value = parseInt(rows[0].VALUE, 10);
+      const answer = `In ${monthName} ${year} there were ${this.formatNumber(value)} tourists in ${province}.`;
+      console.log('[Chat] answerFromFilteredDataByRule: matched province', province, '->', answer.slice(0, 60) + '...');
+      return answer;
+    }
+    const total = rows.reduce((sum, row) => sum + parseInt(row.VALUE, 10), 0);
+    const answer = `In ${monthName} ${year} there were ${this.formatNumber(total)} tourists in Canada.`;
+    console.log('[Chat] answerFromFilteredDataByRule: matched total for', monthName, year, '->', answer.slice(0, 60) + '...');
+    return answer;
+  }
+
+  /**
+   * Build LLM context from the mapped dataset only (same data the charts use).
+   * Uses only getSortedMonthlyData / getTotalVisitors — never raw CSV. Includes schema description so the LLM knows it only has this mapped set.
+   */
+  private buildDataContext(): string {
+    console.log('[Chat] buildDataContext() called for current view:', MONTHS[this.currentMonth - 1], 2000 + this.currentYear);
+    if (!this.dataService.isDataLoaded()) {
+      console.log('[Chat] buildDataContext: data not loaded, returning fallback.');
+      return 'Data not loaded.';
+    }
+    const sorted = this.dataService.getSortedMonthlyData(this.currentYear, this.currentMonth);
+    const total = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
+    const year = 2000 + this.currentYear;
+    const monthName = MONTHS[this.currentMonth - 1];
+    const totalStr = this.formatNumber(total);
+    const lines: string[] = [
+      this.dataService.getMappedDatasetDescription(),
+      '---',
+      `Current view (one slice of the mapped dataset): ${monthName} ${year}.`,
+      `Total visitors: ${totalStr}.`,
+      `Use this exact sentence when asked "how many tourists" or "total" for this period: In ${monthName} ${year} there were ${totalStr} tourists in Canada.`,
+      'By province (descending):'
+    ];
+    sorted.forEach((row) => {
+      lines.push(`  ${row.GEO}: ${this.formatNumber(parseInt(row.VALUE, 10))}`);
+    });
+    const context = lines.join('\n');
+    console.log('[Chat] buildDataContext: total=', totalStr, '| provinces=', sorted.length, '| context length (chars)=', context.length);
+    return context;
+  }
+
+  /**
+   * One-line factual answer for "how many tourists" for the current view (no LLM).
+   * Used so the user always sees the correct number and we avoid generic/repeated model answers.
+   */
+  private getTotalTouristsAnswerLine(): string {
+    if (!this.dataService.isDataLoaded()) return '';
+    const total = this.dataService.getTotalVisitors(this.currentYear, this.currentMonth);
+    const year = 2000 + this.currentYear;
+    const monthName = MONTHS[this.currentMonth - 1];
+    return `In ${monthName} ${year} there were ${this.formatNumber(total)} tourists in Canada.`;
+  }
+
+  /**
+   * True if the question is asking for total/count of tourists (so we can answer from data directly).
+   */
+  private isTotalTouristsQuestion(question: string): boolean {
+    const q = question.trim().toLowerCase();
+    return (
+      /how\s+many\s+(tourists?|visitors?)/.test(q) ||
+      /(total|number\s+of)\s+(tourists?|visitors?)/.test(q) ||
+      /(tourists?|visitors?)\s+(total|count)/.test(q)
+    );
+  }
+
+  /**
+   * If the question is a simple "how many tourists" for the current view, use data-only answer to avoid repetition.
+   * Only uses data when the question doesn't specify a different year/month, or when it matches the current view.
+   * Returns the answer string, or null if the LLM should answer.
+   */
+  private maybeAnswerTotalFromData(question: string): string | null {
+    const isTotal = this.isTotalTouristsQuestion(question);
+    console.log('[Chat] maybeAnswerTotalFromData: question=', question.slice(0, 50) + (question.length > 50 ? '...' : ''), '| isTotalQuestion=', isTotal);
+    if (!isTotal) return null;
+    const q = question.trim().toLowerCase();
+    const currentYear = 2000 + this.currentYear;
+    const currentMonthName = MONTHS[this.currentMonth - 1].toLowerCase();
+    // If question mentions a year (e.g. 2010, 2005), use data only if it matches current view.
+    const yearMatch = q.match(/\b(200\d|201\d)\b/);
+    if (yearMatch && parseInt(yearMatch[1], 10) !== currentYear) {
+      console.log('[Chat] maybeAnswerTotalFromData: year mismatch (asked', yearMatch[1], 'vs view', currentYear + ') -> LLM will answer');
+      return null;
+    }
+    // If question mentions a month by name, use data only if it matches current view.
+    const monthNames = MONTHS.map((m) => m.toLowerCase());
+    const mentionedMonth = monthNames.find((m) => q.includes(m));
+    if (mentionedMonth && mentionedMonth !== currentMonthName) {
+      console.log('[Chat] maybeAnswerTotalFromData: month mismatch (asked', mentionedMonth, 'vs view', currentMonthName + ') -> LLM will answer');
+      return null;
+    }
+    const line = this.getTotalTouristsAnswerLine();
+    console.log('[Chat] maybeAnswerTotalFromData: using rule-based total line (period matches view)');
+    return line || null;
+  }
+
   private loadChatFromStorage(): void {
     try {
       const raw = localStorage.getItem(DashboardController.CHAT_STORAGE_KEY);
-      if (!raw) return;
+      if (!raw) {
+        console.log('[Chat] loadChatFromStorage: no stored chat');
+        return;
+      }
       const parsed = JSON.parse(raw) as { role: string; content: string }[];
       if (Array.isArray(parsed) && parsed.every((m) => m && typeof m.role === 'string' && typeof m.content === 'string')) {
         this.chatMessages = parsed;
+        console.log('[Chat] loadChatFromStorage: restored', parsed.length, 'messages');
       }
     } catch {
       /* ignore */
@@ -337,8 +544,17 @@ export class DashboardController {
     };
 
     setDisabled(true);
+    console.log('[Chat] setupLLMLoading: loading model...');
     loadModel();
-    whenReady().then(() => setDisabled(false)).catch(() => setDisabled(false));
+    whenReady()
+      .then(() => {
+        console.log('[Chat] setupLLMLoading: model ready, chat input enabled.');
+        setDisabled(false);
+      })
+      .catch(() => {
+        console.log('[Chat] setupLLMLoading: model failed to load, chat input enabled anyway.');
+        setDisabled(false);
+      });
   }
 
   private setupEventListeners(): void {

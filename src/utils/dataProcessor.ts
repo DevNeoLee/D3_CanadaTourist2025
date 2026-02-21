@@ -1,9 +1,13 @@
 import { TouristData, Year, Month } from '../types';
 import { PROVINCES } from '../constants';
 
+/**
+ * Processes data for the mapped dataset: filter → by year/month → sort/aggregate.
+ * All chart and LLM context use this mapped result; raw CSV is not used downstream.
+ */
 export class DataProcessor {
   /**
-   * Filter only relevant data from the original dataset
+   * Filter only relevant data from the original dataset (provinces, total non-resident tourists, unadjusted, 2000s).
    */
   static filterRelevantData(data: TouristData[]): TouristData[] {
     return data.filter(item => 
@@ -30,7 +34,7 @@ export class DataProcessor {
       
       if (monthlyData.length === 12) break;
     }
-    
+    console.log('monthlyData: ', monthlyData)
     return monthlyData;
   }
 
