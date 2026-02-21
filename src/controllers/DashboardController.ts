@@ -12,8 +12,9 @@ export class DashboardController {
   private mapChart: MapChart;
   private barChart: BarChart;
   private pieChart: PieChart;
-  private currentYear: Year = 10; // 2010
-  private currentMonth: Month = 7; // July
+  private currentYear: Year = 10;
+  private currentMonth: Month = 7;
+  private chatMessages: { role: 'user' | 'assistant'; content: string }[] = [];
 
   constructor() {
     this.dataService = DataService.getInstance();
@@ -215,10 +216,26 @@ export class DashboardController {
     const sendFromModal = (): void => {
       const text = modalInput?.value?.trim() ?? '';
       if (!text) return;
+      this.chatMessages.push({ role: 'user', content: text });
       this.appendModalMessage(modalMessages, 'user', text);
-      this.appendModalMessage(modalMessages, 'assistant', 'Follow-up answer will appear here when LLM is connected.');
+      const runLLM = isModelReady();
+      this.appendModalMessage(modalMessages, 'assistant', runLLM ? '...' : 'Follow-up answer will appear here when LLM is connected.');
       this.scrollModalMessagesToBottom(modalMessages);
       if (modalInput) modalInput.value = '';
+      if (runLLM) {
+        const assistantEl = modalMessages.lastElementChild as HTMLElement | null;
+        const history = this.chatMessages.slice(0, -1);
+        runInference(text, history)
+          .then((result) => {
+            this.chatMessages.push({ role: 'assistant', content: result });
+            if (assistantEl) assistantEl.textContent = result || 'No response.';
+            this.scrollModalMessagesToBottom(modalMessages);
+          })
+          .catch(() => {
+            if (assistantEl) assistantEl.textContent = 'Sorry, something went wrong.';
+            this.scrollModalMessagesToBottom(modalMessages);
+          });
+      }
     };
 
     mainSend?.addEventListener('click', sendFromMainBar);

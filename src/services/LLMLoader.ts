@@ -56,10 +56,23 @@ export function getPipeline(): unknown {
   return pipeline;
 }
 
-export async function runInference(userMessage: string): Promise<string> {
+const MAX_HISTORY_MESSAGES = 6;
+
+function formatHistory(history: { role: string; content: string }[]): string {
+  return history
+    .map((m) => (m.role === 'user' ? `User: ${m.content}` : `Assistant: ${m.content}`))
+    .join('\n');
+}
+
+export async function runInference(
+  userMessage: string,
+  history: { role: string; content: string }[] = []
+): Promise<string> {
   const pipe = pipeline as (input: string, opts?: { max_new_tokens?: number }) => Promise<{ generated_text: string }[]>;
   if (!pipe) throw new Error('Model not ready');
-  const input = `${SYSTEM_PROMPT}\n\nQuestion: ${userMessage}`;
+  const window = history.slice(-MAX_HISTORY_MESSAGES);
+  const historyBlock = window.length ? formatHistory(window) + '\n\n' : '';
+  const input = `${SYSTEM_PROMPT}\n\n${historyBlock}User: ${userMessage}`;
   const out = await pipe(input, { max_new_tokens: 256 });
   return out?.[0]?.generated_text?.trim() ?? '';
 }
