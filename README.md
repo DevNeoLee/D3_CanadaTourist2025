@@ -14,6 +14,7 @@ Interactive visualization of Canadian tourist data from 2000-2019 using modern D
 - **Package Manager**: npm
 - **Linting**: ESLint
 - **Type Checking**: TypeScript
+- **LLM / AI**: [transformers.js](https://huggingface.co/docs/transformers.js) (browser-side mini LLM), [Groq](https://groq.com/) API (cloud)
 
 ## 📊 Features
 
@@ -33,6 +34,12 @@ Interactive visualization of Canadian tourist data from 2000-2019 using modern D
 - Geographic distribution of visitors
 - Comparative analysis between provinces
 
+### 🤖 LLM: Local Browser Mini LLM + Groq API
+- **Browser-side mini LLM** (transformers.js): LaMini-Flan-T5 runs locally in the browser for chat when offline or as a fallback. No server required; model is cached after first load.
+- **Groq API**: When online, questions can be answered by Groq for richer, broader responses about the dataset and general Canada tourism context.
+- **Smart routing**: Casual greetings (hi, hello, thanks) get short friendly replies; data questions (year, province, “how many visitors”) use the app’s filtered dataset so answers match the charts.
+- **Offline-first**: If the network is unavailable, the app uses the local model so chat still works after the model has been downloaded once.
+
 ## 🏗️ Architecture
 
 ### Modern Code Organization
@@ -46,8 +53,10 @@ src/
 │   └── Tooltip.ts      # Reusable tooltip component
 ├── controllers/         # Application logic
 │   └── DashboardController.ts
-├── services/           # Data management
-│   └── DataService.ts
+├── services/           # Data & LLM
+│   ├── DataService.ts
+│   ├── LLMLoader.ts    # Local model (transformers.js) + Groq routing
+│   └── OpenAIClient.ts # Groq / OpenAI API client
 ├── types/              # TypeScript definitions
 │   └── index.ts
 ├── utils/              # Utility functions
@@ -62,6 +71,29 @@ src/
 - **Factory Pattern**: Chart component creation
 - **Observer Pattern**: Event-driven updates
 - **Strategy Pattern**: Different scaling methods for data visualization
+
+## 🤖 LLM: Local Mini LLM + Groq API
+
+The dashboard includes an AI chat that answers questions about the data and supports casual conversation. It combines a **local mini LLM** in the browser (transformers.js) with the **Groq API** to broaden answers and provide extra information about the dataset.
+
+### How it works
+- **Online**: The app uses Groq first. The current (or asked) slice of the dataset is sent as context so answers match the visualization (e.g. “How many in July 2011?” uses 2011 data).
+- **Offline / fallback**: When offline or when Groq fails, the app uses a small model (LaMini-Flan-T5-248M) that runs entirely in the browser via transformers.js. The model is downloaded and cached on first use.
+- **Rule-based answers**: Simple data questions (e.g. “How many tourists in 2011?” or “Ontario in July 2010”) are answered from the dataset directly when possible, without calling the LLM.
+
+### Setup (optional)
+- **Groq (recommended for best answers)**: Create an API key at [Groq](https://console.groq.com/), then add to `.env`:
+  ```env
+  VITE_GROQ_API_KEY=your_groq_api_key_here
+  ```
+- **Local-only**: If you do not set `VITE_GROQ_API_KEY`, the app will use only the browser-side mini LLM. The first chat may take a moment while the model downloads.
+
+See `.env.example` for all optional variables (e.g. OpenAI proxy).
+
+### Where it’s implemented
+- **`src/services/LLMLoader.ts`**: Loads the local model (transformers.js), runs inference, and calls the remote API (Groq) with rules and data context; handles offline and fallback.
+- **`src/services/OpenAIClient.ts`**: Sends chat requests to Groq (or OpenAI/proxy if configured).
+- **`src/controllers/DashboardController.ts`**: Builds dataset context from the current or asked year/month, detects casual vs data questions, and wires the chat UI to the LLM.
 
 ## 🚀 Getting Started
 
@@ -120,7 +152,7 @@ Canada_Tourist_Chart_d3/
 ├── src/                    # Source code
 │   ├── components/         # Chart components
 │   ├── controllers/        # Application logic
-│   ├── services/          # Data services
+│   ├── services/          # Data services & LLM (LLMLoader, OpenAIClient)
 │   ├── types/             # TypeScript types
 │   ├── utils/             # Utilities
 │   ├── constants/         # Constants
@@ -223,4 +255,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Note**: This is a refactored version of the original project, implementing modern JavaScript/TypeScript best practices, improved architecture, and enhanced user experience.
+**Note**: This is a refactored version of the original project, implementing modern JavaScript/TypeScript best practices, improved architecture, enhanced user experience, and **LLM support** (local mini LLM in the browser via transformers.js plus Groq API) for answering and broadening extra information about the dataset.
