@@ -70,8 +70,9 @@ export class DashboardController {
       await this.updateCharts();
       this.updateLoadingProgress(90);
 
-      // Three.js plane scene: mount and start (idle plane visible; map hover not wired yet)
+      // Three.js plane scene: mount and start; connect map hover to plane effect
       this.initPlaneScene();
+      this.connectMapHoverToPlaneEffect();
 
       // Update info display
       this.updateInfoDisplay();
@@ -771,6 +772,16 @@ export class DashboardController {
     this.planeScene = new PlaneScene({ width: container.clientWidth || 400, height: container.clientHeight || 300 });
     this.planeScene.mount(container);
     this.planeScene.start();
+  }
+
+  /**
+   * When user hovers a province on the map, notify PlaneScene (plane count + target position).
+   */
+  private connectMapHoverToPlaneEffect(): void {
+    if (!this.planeScene) return;
+    this.mapChart.setOnProvinceHover((name, value, planeCount, screenX, screenY) => {
+      this.planeScene!.startPlaneEffect(name, planeCount, screenX, screenY);
+    });
   }
 
   public destroy(): void {

@@ -3,10 +3,15 @@ import { TouristData, CityData, MapData, ProvinceData } from '../types';
 import { BaseChart } from './BaseChart';
 import { MAP_COLOR_SCALE, MAP_PROJECTION_CONFIG, CHART_DIMENSIONS } from '../constants';
 
+/** Callback when user hovers a province: (provinceName, visitorValue, planeCount, targetScreenX, targetScreenY). */
+export type OnProvinceHoverCallback = (name: string, value: number, planeCount: number, screenX: number, screenY: number) => void;
+
 export class MapChart extends BaseChart {
   private projection: d3.GeoProjection;
   private path: d3.GeoPath<any, any>;
   private colorScale: d3.ScaleThreshold<number, string>;
+  /** When set, province hover notifies the Three.js plane effect (plane count + target position). */
+  private onProvinceHover: OnProvinceHoverCallback | null = null;
   /** Cached once at first render; reused on year/month change to avoid refetching. */
   private citiesCache: CityData[] | null = null;
   /** Cached once at first render; reused on year/month change to avoid refetching. */
@@ -148,6 +153,11 @@ export class MapChart extends BaseChart {
     return paths;
   }
 
+  /** Register callback for province hover (plane effect). */
+  setOnProvinceHover(cb: OnProvinceHoverCallback | null): void {
+    this.onProvinceHover = cb;
+  }
+
   /**
    * Add interactive events to map paths
    * Uses arrow functions to properly bind 'this' context
@@ -165,6 +175,22 @@ export class MapChart extends BaseChart {
         if (d.data) {
           const content = self.getTooltipContent(d.data, 'Province');
           self.tooltip.show(content, event.pageX - 100, event.pageY - 120);
+
+          // Notify Three.js plane effect: plane count + target in screen coords
+          const value = parseInt(d.data.VALUE, 10);
+          const planeCount = Math.max(1, Math.round(value / 1000));
+          const centroid = self.path.centroid(d.feature);
+          const svgEl = self.svg.node();
+          if (svgEl && self.onProvinceHover) {
+            const pt = svgEl.createSVGPoint();
+            pt.x = self.dimensions.margin.left + centroid[0];
+            pt.y = self.dimensions.margin.top + centroid[1];
+            const screenCTM = svgEl.getScreenCTM();
+            if (screenCTM) {
+              const screenPt = pt.matrixTransform(screenCTM);
+              self.onProvinceHover(d.data.GEO, value, planeCount, screenPt.x, screenPt.y);
+            }
+          }
         }
       })
       .on('pointerleave', function() {
