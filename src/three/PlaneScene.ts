@@ -8,12 +8,15 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const MAX_INSTANCES = 2000;
-const FLY_DURATION_MS = 3000;
-const PLANE_SCALE = 0.04;
+/** Cap visible planes so hover effect stays smooth (avoids 1000+ instances on high-traffic provinces). */
+const MAX_VISIBLE_PLANES = 72;
+const FLY_DURATION_MS = 2000;
+/** Fly-in plane scale: kept small so they stay subtle from the start. */
+const PLANE_SCALE = 0.004;
 const TARGET_DISTANCE = 6;
 const TARGET_PLANE_SIZE = 720;
-/** Max delay (ms) before each plane starts flying so they're staggered and less overlapping. */
-const STAGGER_MAX_MS = 900;
+/** Max delay (ms) before each plane starts – larger = more spread in time so less clustering. */
+const STAGGER_MAX_MS = 2000;
 
 export interface PlaneSceneOptions {
   width?: number;
@@ -204,27 +207,30 @@ export class PlaneScene {
       const now = performance.now();
 
       if (this.effectCount > 0) {
-        this.planeMesh.visible = false;
         const elapsed = now - this.effectStartTime;
-        const t = Math.min(1, elapsed / FLY_DURATION_MS);
-        const eased = 1 - (1 - t) * (1 - t);
-
-        for (let i = 0; i < this.effectCount; i++) {
-          const delayedElapsed = Math.max(0, elapsed - this.startDelays[i]);
-          const t = Math.min(1, delayedElapsed / FLY_DURATION_MS);
-          const eased = 1 - (1 - t) * (1 - t);
-          const scale = t <= 0 ? 0 : PLANE_SCALE * (1 - eased);
-          this.dummy.position.lerpVectors(this.startPositions[i], this.targetWorld, eased);
-          this.dummy.lookAt(this.targetWorld);
-          this.dummy.scale.setScalar(scale);
-          this.dummy.updateMatrix();
-          for (const inst of this.instancedMeshes) {
-            inst.setMatrixAt(i, this.dummy.matrix);
+        const effectDone = elapsed > STAGGER_MAX_MS + FLY_DURATION_MS;
+        if (effectDone) {
+          this.effectCount = 0;
+          for (const inst of this.instancedMeshes) inst.count = 0;
+        } else {
+          this.planeMesh.visible = false;
+          for (let i = 0; i < this.effectCount; i++) {
+            const delayedElapsed = Math.max(0, elapsed - this.startDelays[i]);
+            const t = Math.min(1, delayedElapsed / FLY_DURATION_MS);
+            const eased = 1 - (1 - t) * (1 - t);
+            const scale = t <= 0 ? 0 : PLANE_SCALE * (1 - eased);
+            this.dummy.position.lerpVectors(this.startPositions[i], this.targetWorld, eased);
+            this.dummy.lookAt(this.targetWorld);
+            this.dummy.scale.setScalar(scale);
+            this.dummy.updateMatrix();
+            for (const inst of this.instancedMeshes) {
+              inst.setMatrixAt(i, this.dummy.matrix);
+            }
           }
-        }
-        for (const inst of this.instancedMeshes) {
-          inst.instanceMatrix.needsUpdate = true;
-          inst.count = this.effectCount;
+          for (const inst of this.instancedMeshes) {
+            inst.instanceMatrix.needsUpdate = true;
+            inst.count = this.effectCount;
+          }
         }
       } else {
         this.planeMesh.visible = !this.hideIdleBecauseZeroVisitor;
@@ -266,19 +272,19 @@ export class PlaneScene {
     return this.camera.position.clone().add(dir.multiplyScalar(startDist));
   }
 
+  /**
+   * Start fly-in effect: planes fly from a ring toward the province position (in screen space).
+   */
   startPlaneEffect(
     _provinceName: string,
     planeCount: number,
-    _targetScreenX: number,
-    _targetScreenY: number
+    targetScreenX: number,
+    targetScreenY: number
   ): void {
     if (!this.container) return;
-    const count = Math.min(planeCount, MAX_INSTANCES);
+    const count = Math.min(planeCount, MAX_INSTANCES, MAX_VISIBLE_PLANES);
     this.hideIdleBecauseZeroVisitor = count === 0;
-    const rect = this.container.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    this.targetWorld.copy(this.screenToWorld(centerX, centerY, TARGET_DISTANCE));
+    this.targetWorld.copy(this.screenToWorld(targetScreenX, targetScreenY, TARGET_DISTANCE));
 
     for (let i = 0; i < count; i++) {
       this.startPositions[i].copy(this.randomRingStart());
