@@ -177,7 +177,7 @@ export class MapChart extends BaseChart {
 
           // Notify Three.js plane effect: plane count + target in screen coords
           const value = parseInt(d.data.VALUE, 10);
-          const planeCount = Math.max(1, Math.round(value / 10000));
+          const planeCount = value <= 0 ? 0 : Math.ceil(value / 10000);
           const centroid = self.path.centroid(d.feature);
           const svgEl = self.svg.node();
           if (svgEl && self.onProvinceHover) {
