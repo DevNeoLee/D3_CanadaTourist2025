@@ -75,11 +75,14 @@ export class PlaneScene {
       this.startDelays.push(0);
     }
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.8);
     this.scene.add(ambient);
     const dir = new THREE.DirectionalLight(0xffffff, 0.5);
     dir.position.set(2, 2, 2);
     this.scene.add(dir);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+    fill.position.set(0, 0, 5);
+    this.scene.add(fill);
 
     this.boundResize = (): void => this.handleResize();
   }
