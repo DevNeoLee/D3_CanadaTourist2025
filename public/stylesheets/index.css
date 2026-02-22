@@ -524,6 +524,33 @@ img:hover {
 .map-chart-svg { pointer-events: none; }
 .map-chart-svg .path { pointer-events: auto; }
 
+/* Three.js canvas: full-page layer so planes can show across the whole page */
+.three-plane-container {
+    overflow: hidden;
+    background: #ffffff;
+    pointer-events: none; /* clicks and hover go through to charts and UI */
+}
+
+.three-plane-fullpage {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+}
+
+/* Main content above the Three.js layer so map and charts are visible */
+.body {
+    position: relative;
+    z-index: 1;
+}
+
+.container {
+    position: relative;
+    z-index: 1;
+}
+
 @media only screen and (min-width: 800px) {
     .infoContainer {
         width: 90%;

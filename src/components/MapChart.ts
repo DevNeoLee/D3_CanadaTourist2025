@@ -155,25 +155,21 @@ export class MapChart extends BaseChart {
   private addMapEvents(
     paths: d3.Selection<SVGPathElement, { feature: ProvinceData; data: TouristData | null }, SVGGElement, unknown>
   ): void {
-    // Store reference to 'this' for use in event handlers
     const self = this;
-    
+
     paths
       .on('pointerenter', function(event: PointerEvent, d) {
-        // Change opacity on hover for subtle visual feedback
         d3.select(this)
           .style('opacity', '0.7');
-        
+
         if (d.data) {
           const content = self.getTooltipContent(d.data, 'Province');
           self.tooltip.show(content, event.pageX - 100, event.pageY - 120);
         }
       })
-      .on('pointerleave', function(event: PointerEvent, d) {
-        // Restore original opacity
+      .on('pointerleave', function() {
         d3.select(this)
           .style('opacity', '1');
-        
         self.tooltip.hide();
       });
   }
