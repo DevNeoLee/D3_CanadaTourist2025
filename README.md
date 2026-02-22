@@ -4,7 +4,7 @@ Interactive visualization of Canadian tourist data from 2000-2019 using modern D
 
 ## 🚀 Live Demo
 
-**[View Live Site](https://devneolee.github.io/Canada_Tourist_Chart_d3/)**
+**[View Live Site](https://d3-canada-tourist2025.vercel.app/)**
 
 ## 🛠️ Technology Stack
 
