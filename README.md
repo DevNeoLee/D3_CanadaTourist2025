@@ -1,6 +1,6 @@
-# Canada Tourist Visualization Dashboard
+# Canada Tourist Visualization Dashboard with Browser LLM with Transformers.js
 
-Interactive visualization of Canadian tourist data from 2000-2019 using modern D3.js and TypeScript.
+Interactive visualization of Canadian tourist data from 2000-2019 using modern D3.js and TypeScript with LLM(Local Browser/ Groq API).
 
 ## 🚀 Live Demo
 
