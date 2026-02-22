@@ -1,7 +1,7 @@
 {
   "name": "canada-tourist-visualization",
   "version": "2.0.0",
-  "description": "Interactive visualization of Canadian tourist data from 2000-2019 using D3.js",
+  "description": "Interactive Canada tourism dashboard (D3.js, TypeScript, Vite) with AI chat: transformers.js browser LLM when offline + Groq API when online, with smart prompting and dataset context.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,11 @@
     "canada",
     "tourism",
     "data-viz",
-    "typescript"
+    "typescript",
+    "transformers.js",
+    "groq",
+    "llm",
+    "browser-llm"
   ],
   "author": "Justin K Lee",
   "license": "MIT",
@@ -30,8 +34,8 @@
   },
   "homepage": "https://github.com/DevNeoLee/DataVisualization4#readme",
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
-    "d3": "^7.8.5"
+    "d3": "^7.8.5",
+    "@huggingface/transformers": "^3.5.0"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",

@@ -1,6 +1,10 @@
 # Canada Tourist Visualization Dashboard with Browser LLM with Transformers.js
 
-Interactive visualization of Canadian tourist data from 2000-2019 using modern D3.js and TypeScript with LLM(Local Browser/ Groq API).
+## Travelers to Canada
+
+A fully interactive data visualization dashboard built with TypeScript, D3.js (v7), and Vite, designed to showcase 20 years of Canadian tourism statistics within a single, responsive web page. The app combines **modern web standards**—modular TypeScript architecture, CSS Grid and Flexbox, scalable SVG graphics—with **AI-powered chat** so users can ask questions about the data and get answers even when offline.
+
+**LLM and prompting are central to the experience:** when **online**, the **Groq API** answers with rich, contextual responses; when **offline** or as a fallback, a **mini LLM runs entirely in the browser** using **transformers.js** (no server required, model cached after first load). Careful **prompting**—system instructions, dataset context injected by year/month, and routing of casual vs. data questions—ensures the assistant uses only the app’s filtered dataset for statistics and stays friendly for greetings and follow-ups. Technical highlights include advanced D3.js charting (threshold, linear, and square-root scales), real-time data filtering, and a maintainable codebase with strict linting and strong type safety.
 
 ## 🚀 Live Demo
 
