@@ -6,6 +6,7 @@ import { PieChart } from '../components/PieChart';
 import { Year, Month, LoadingManager, TouristData } from '../types';
 import { MONTHS, PROVINCES, PROVINCE_ALIASES } from '../constants';
 import { loadModel, whenReady, isModelReady, runChat, isOpenAIConfigured, isBlocked, REFUSAL_MESSAGE } from '../services/LLMLoader';
+import { PlaneScene } from '../three/PlaneScene';
 
 export class DashboardController {
   private dataService: DataService;
@@ -15,6 +16,7 @@ export class DashboardController {
   private currentYear: Year = 10;
   private currentMonth: Month = 7;
   private chatMessages: { role: 'user' | 'assistant'; content: string }[] = [];
+  private planeScene: PlaneScene | null = null;
   private static readonly CHAT_STORAGE_KEY = 'canada-tourist-chat';
   /** Cap chat history to avoid unbounded memory and crashes. Only last N messages kept. */
   private static readonly MAX_CHAT_MESSAGES = 50;
@@ -67,7 +69,10 @@ export class DashboardController {
       // Update charts
       await this.updateCharts();
       this.updateLoadingProgress(90);
-      
+
+      // Three.js plane scene: mount and start (idle plane visible; map hover not wired yet)
+      this.initPlaneScene();
+
       // Update info display
       this.updateInfoDisplay();
       this.updateLoadingProgress(100);
@@ -758,9 +763,21 @@ export class DashboardController {
   }
 
   /**
-   * Cleanup dashboard
+   * Initialize Three.js plane scene and mount to #threeCanvasContainer.
    */
+  private initPlaneScene(): void {
+    const container = document.getElementById('threeCanvasContainer');
+    if (!container) return;
+    this.planeScene = new PlaneScene({ width: container.clientWidth || 400, height: container.clientHeight || 300 });
+    this.planeScene.mount(container);
+    this.planeScene.start();
+  }
+
   public destroy(): void {
+    if (this.planeScene) {
+      this.planeScene.dispose();
+      this.planeScene = null;
+    }
     this.mapChart.destroy();
     this.barChart.destroy();
     this.pieChart.destroy();
