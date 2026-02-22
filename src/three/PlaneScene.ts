@@ -26,7 +26,8 @@ export class PlaneScene {
   private renderer: THREE.WebGLRenderer;
   /** Idle plane: Mesh (default box) or Group (full GLB with all meshes). */
   private planeMesh: THREE.Object3D;
-  private instancedMesh: THREE.InstancedMesh;
+  /** Fly-in planes: one InstancedMesh per GLB mesh part so each part keeps its material (full plane look). */
+  private instancedMeshes: THREE.InstancedMesh[] = [];
   private animationId: number | null = null;
   private container: HTMLElement | null = null;
   private boundResize: () => void;
@@ -64,11 +65,11 @@ export class PlaneScene {
     this.scene.add(this.planeMesh);
 
     const instancedGeometry = new THREE.BoxGeometry(1, 0.15, 0.3);
-    /* Use MeshNormalMaterial so the many small planes match the colorful look of the idle plane, size unchanged. */
     const instancedMaterial = new THREE.MeshNormalMaterial();
-    this.instancedMesh = new THREE.InstancedMesh(instancedGeometry, instancedMaterial, MAX_INSTANCES);
-    this.instancedMesh.count = 0;
-    this.scene.add(this.instancedMesh);
+    const boxInstanced = new THREE.InstancedMesh(instancedGeometry, instancedMaterial, MAX_INSTANCES);
+    boxInstanced.count = 0;
+    this.scene.add(boxInstanced);
+    this.instancedMeshes = [boxInstanced];
 
     for (let i = 0; i < MAX_INSTANCES; i++) {
       this.startPositions.push(new THREE.Vector3());
@@ -173,17 +174,24 @@ export class PlaneScene {
         this.planeMesh = group;
         this.scene.add(this.planeMesh);
 
-        const firstMat = meshes[0].material;
-        const instancedMat = Array.isArray(firstMat) ? (firstMat[0] as THREE.Material).clone() : (firstMat as THREE.Material).clone();
-        const instancedGeo = merged ? merged.clone() : geometries[0].clone();
-        instancedGeo.translate(-center.x, -center.y, -center.z);
-        instancedGeo.computeVertexNormals();
-        this.instancedMesh.geometry.dispose();
-        (this.instancedMesh.material as THREE.Material).dispose();
-        this.instancedMesh.geometry = instancedGeo;
-        this.instancedMesh.material = instancedMat;
+        for (const inst of this.instancedMeshes) {
+          this.scene.remove(inst);
+          inst.geometry.dispose();
+          (inst.material as THREE.Material).dispose();
+        }
+        this.instancedMeshes = [];
+        for (let i = 0; i < meshes.length; i++) {
+          const geo = geometries[i].clone();
+          geo.computeVertexNormals();
+          const mat = meshes[i].material;
+          const material = Array.isArray(mat) ? (mat[0] as THREE.Material).clone() : (mat as THREE.Material).clone();
+          const inst = new THREE.InstancedMesh(geo, material, MAX_INSTANCES);
+          inst.count = 0;
+          this.scene.add(inst);
+          this.instancedMeshes.push(inst);
+        }
 
-        console.log('[PlaneScene] loaded plane.glb (all ' + meshes.length + ' meshes)');
+        console.log('[PlaneScene] loaded plane.glb (all ' + meshes.length + ' meshes, fly-in uses full multi-layer look)');
       },
       undefined,
       () => { /* file missing or load error: keep box */ }
@@ -210,14 +218,20 @@ export class PlaneScene {
           this.dummy.lookAt(this.targetWorld);
           this.dummy.scale.setScalar(scale);
           this.dummy.updateMatrix();
-          this.instancedMesh.setMatrixAt(i, this.dummy.matrix);
+          for (const inst of this.instancedMeshes) {
+            inst.setMatrixAt(i, this.dummy.matrix);
+          }
         }
-        this.instancedMesh.instanceMatrix.needsUpdate = true;
-        this.instancedMesh.count = this.effectCount;
+        for (const inst of this.instancedMeshes) {
+          inst.instanceMatrix.needsUpdate = true;
+          inst.count = this.effectCount;
+        }
       } else {
         this.planeMesh.visible = !this.hideIdleBecauseZeroVisitor;
         this.planeMesh.rotation.y += 0.008;
-        this.instancedMesh.count = 0;
+        for (const inst of this.instancedMeshes) {
+          inst.count = 0;
+        }
       }
 
       this.renderer.render(this.scene, this.camera);
@@ -294,8 +308,10 @@ export class PlaneScene {
         else m.dispose();
       }
     });
-    this.instancedMesh.geometry.dispose();
-    (this.instancedMesh.material as THREE.Material).dispose();
+    for (const inst of this.instancedMeshes) {
+      inst.geometry.dispose();
+      (inst.material as THREE.Material).dispose();
+    }
     this.renderer.dispose();
     if (this.container && this.renderer.domElement.parentNode === this.container) {
       this.container.removeChild(this.renderer.domElement);
