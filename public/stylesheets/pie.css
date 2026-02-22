@@ -1,9 +1,14 @@
-
+/* Allow enlarged hover segment to extend without being cut off */
 .pieWrap {
     position: absolute;
     left: 270px;
     top: 90px;
     margin: 0px auto;
+    overflow: visible;
+}
+
+.pieWrap svg {
+    overflow: visible;
 }
 
 .pie {

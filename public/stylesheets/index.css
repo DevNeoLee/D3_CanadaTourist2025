@@ -29,6 +29,7 @@
     margin: 0 auto;
     padding-left: 0;
     margin-left: 0;
+    overflow: visible;
 }
 
 .controlWrap {

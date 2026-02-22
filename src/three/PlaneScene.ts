@@ -7,16 +7,14 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-const MAX_INSTANCES = 2000;
-/** Cap visible planes so hover effect stays smooth (avoids 1000+ instances on high-traffic provinces). */
-const MAX_VISIBLE_PLANES = 72;
-const FLY_DURATION_MS = 2000;
+const MAX_INSTANCES = 1500;
+const FLY_DURATION_MS = 1500;
 /** Fly-in plane scale: kept small so they stay subtle from the start. */
-const PLANE_SCALE = 0.004;
+const PLANE_SCALE = 0.005;
 const TARGET_DISTANCE = 6;
 const TARGET_PLANE_SIZE = 720;
 /** Max delay (ms) before each plane starts – larger = more spread in time so less clustering. */
-const STAGGER_MAX_MS = 2000;
+const STAGGER_MAX_MS = 500;
 
 export interface PlaneSceneOptions {
   width?: number;
@@ -282,7 +280,7 @@ export class PlaneScene {
     targetScreenY: number
   ): void {
     if (!this.container) return;
-    const count = Math.min(planeCount, MAX_INSTANCES, MAX_VISIBLE_PLANES);
+    const count = Math.min(planeCount, MAX_INSTANCES);
     this.hideIdleBecauseZeroVisitor = count === 0;
     this.targetWorld.copy(this.screenToWorld(targetScreenX, targetScreenY, TARGET_DISTANCE));
 
