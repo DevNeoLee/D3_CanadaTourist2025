@@ -14,6 +14,8 @@
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
 }
 
 .rightContainer {
@@ -25,7 +27,8 @@
     position: relative;
     z-index: 0;
     margin: 0 auto;
-
+    padding-left: 0;
+    margin-left: 0;
 }
 
 .controlWrap {
@@ -544,14 +547,31 @@ img:hover {
 }
 
 /*
+ * Medium screens: tighten padding so left section and map+legend fit; prevent map legend from being cut off.
+ */
+@media only screen and (min-width: 900px) and (max-width: 1384px) {
+    .body {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .rightContainer {
+        min-width: 0;
+        max-width: 100%;
+    }
+}
+
+/*
  * Large screens: left section (bar + pie) and right section (map + controls + AI)
  * move horizontally with screen width only. No vertical layout change.
  * Bar and pie keep original spacing (pie absolute at 270px, 90px); sections are flex children.
  * Container is centered with max-width so both sides get dynamic space on wider screens.
  */
 @media only screen and (min-width: 1385px) {
-    body {
+    .body {
         max-width: 100vw;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
     }
 
     .container {
@@ -560,20 +580,21 @@ img:hover {
         width: 100%;
         max-width: min(100%, 110rem);
         margin: 0 auto;
-        padding: 0 clamp(1rem, 2.5vw, 2rem);
-        gap: clamp(1rem, 5vw, 4rem);
+        padding: 0 clamp(0.5rem, 1.5vw, 1.5rem);
+        gap: clamp(0.75rem, 3vw, 3rem);
         align-items: flex-start;
     }
 
-    /* Left section: bar + pie grouped, content-sized; space on its left comes from centered container + padding */
+    /* Left section: bar + pie grouped, content-sized; less left padding so content is not pushed right */
     .leftContainer {
         order: 0;
         flex: 0 0 auto;
         position: relative;
         margin: 0;
+        padding-left: 0;
     }
 
-    /* Right section: takes remaining horizontal space; no vertical change */
+    /* Right section: takes remaining horizontal space; no vertical change; prevent legend cut-off */
     .rightContainer {
         order: 1;
         display: flex;
@@ -581,6 +602,7 @@ img:hover {
         flex: 1 1 0;
         min-width: 0;
         gap: 0;
+        overflow: visible;
     }
 
     .mapWrap {
