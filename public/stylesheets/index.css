@@ -524,11 +524,11 @@ img:hover {
 .map-chart-svg { pointer-events: none; }
 .map-chart-svg .path { pointer-events: auto; }
 
-/* Three.js canvas: full-page layer so planes can show across the whole page */
+/* Three.js canvas: full-page layer; charts above (z-index 1) */
 .three-plane-container {
     overflow: hidden;
     background: #ffffff;
-    pointer-events: none; /* clicks and hover go through to charts and UI */
+    pointer-events: none;
 }
 
 .three-plane-fullpage {

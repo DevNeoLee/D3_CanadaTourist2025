@@ -1,16 +1,17 @@
 /**
  * Three.js scene for the 3D plane hover effect.
- * Step 3: InstancedMesh of small planes; on province hover they fly in from off-screen to the province.
  * Loads plane.glb from public/models/ when present for a nicer look.
  */
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const MAX_INSTANCES = 2000;
 const FLY_DURATION_MS = 3000;
 const PLANE_SCALE = 0.04;
 const TARGET_DISTANCE = 6;
+const TARGET_PLANE_SIZE = 720;
 /** Max delay (ms) before each plane starts flying so they're staggered and less overlapping. */
 const STAGGER_MAX_MS = 900;
 
@@ -23,7 +24,8 @@ export class PlaneScene {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private planeMesh: THREE.Mesh;
+  /** Idle plane: Mesh (default box) or Group (full GLB with all meshes). */
+  private planeMesh: THREE.Object3D;
   private instancedMesh: THREE.InstancedMesh;
   private animationId: number | null = null;
   private container: HTMLElement | null = null;
@@ -48,7 +50,7 @@ export class PlaneScene {
     this.scene.background = new THREE.Color(0xffffff);
 
     this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 0.1, 1000);
-    this.camera.position.set(0, 0, 8);
+    this.camera.position.set(0, 0, 400);
     this.camera.lookAt(0, 0, 0);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -58,7 +60,7 @@ export class PlaneScene {
     const geometry = new THREE.BoxGeometry(1.2, 0.2, 0.4);
     const material = new THREE.MeshNormalMaterial();
     this.planeMesh = new THREE.Mesh(geometry, material);
-    this.planeMesh.position.set(0, 0, 0);
+    (this.planeMesh as THREE.Mesh).position.set(0, 0, 0);
     this.scene.add(this.planeMesh);
 
     const instancedGeometry = new THREE.BoxGeometry(1, 0.15, 0.3);
@@ -104,32 +106,84 @@ export class PlaneScene {
   }
 
   /**
-   * Try to load public/models/plane.glb; if present, use its geometry for instanced planes (and the idle placeholder).
+   * Load image/plane.glb; use ALL meshes so the full model (every layer) is shown.
    */
   private loadPlaneModel(): void {
     const loader = new GLTFLoader();
     loader.load(
       'image/plane.glb',
       (gltf) => {
-        let geometry: THREE.BufferGeometry | null = null;
+        const meshes: THREE.Mesh[] = [];
         gltf.scene.traverse((child) => {
-          if (child instanceof THREE.Mesh && child.geometry && !geometry) {
-            geometry = child.geometry;
+          if (child instanceof THREE.Mesh && child.geometry) {
+            meshes.push(child);
           }
         });
-        if (!geometry) {
-          console.warn('[PlaneScene] plane.glb has no mesh geometry');
+        if (meshes.length === 0) {
+          console.warn('[PlaneScene] plane.glb has no meshes');
           return;
         }
-        const cloned = geometry.clone();
+
+        const geometries: THREE.BufferGeometry[] = [];
+        const group = new THREE.Group();
+        group.position.set(0, 0, 0);
+
+        for (const mesh of meshes) {
+          const geo = mesh.geometry.clone();
+          geo.applyMatrix4(mesh.matrixWorld);
+          geometries.push(geo);
+        }
+
+        const merged = mergeGeometries(geometries);
+        let bbox: THREE.Box3 | null = merged ? (merged.computeBoundingBox(), merged.boundingBox) : geometries[0].boundingBox;
+        if (!bbox && geometries[0]) {
+          geometries[0].computeBoundingBox();
+          bbox = geometries[0].boundingBox;
+        }
+        const size = new THREE.Vector3();
+        if (bbox) bbox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        const scale = TARGET_PLANE_SIZE / maxDim;
+
+        for (const geo of geometries) {
+          geo.scale(scale, scale, scale);
+        }
+        if (merged) merged.scale(scale, scale, scale);
+        const combinedBbox = merged ? (merged.computeBoundingBox(), merged.boundingBox!) : (geometries[0].computeBoundingBox(), geometries[0].boundingBox!);
+        const center = new THREE.Vector3();
+        combinedBbox.getCenter(center);
+        for (let i = 0; i < meshes.length; i++) {
+          const geo = geometries[i];
+          geo.translate(-center.x, -center.y, -center.z);
+          geo.computeVertexNormals();
+          const mat = meshes[i].material;
+          const material = Array.isArray(mat) ? (mat[0] as THREE.Material).clone() : (mat as THREE.Material).clone();
+          const part = new THREE.Mesh(geo, material);
+          group.add(part);
+        }
+
+        this.scene.remove(this.planeMesh);
+        if (this.planeMesh instanceof THREE.Mesh) {
+          this.planeMesh.geometry.dispose();
+          (this.planeMesh.material as THREE.Material).dispose();
+        }
+        this.planeMesh = group;
+        this.scene.add(this.planeMesh);
+
+        const firstMat = meshes[0].material;
+        const instancedMat = Array.isArray(firstMat) ? (firstMat[0] as THREE.Material).clone() : (firstMat as THREE.Material).clone();
+        const instancedGeo = merged ? merged.clone() : geometries[0].clone();
+        instancedGeo.translate(-center.x, -center.y, -center.z);
+        instancedGeo.computeVertexNormals();
         this.instancedMesh.geometry.dispose();
-        this.instancedMesh.geometry = cloned;
-        this.planeMesh.geometry.dispose();
-        this.planeMesh.geometry = geometry.clone();
-        console.log('[PlaneScene] loaded plane.glb for instanced planes');
+        (this.instancedMesh.material as THREE.Material).dispose();
+        this.instancedMesh.geometry = instancedGeo;
+        this.instancedMesh.material = instancedMat;
+
+        console.log('[PlaneScene] loaded plane.glb (all ' + meshes.length + ' meshes)');
       },
       undefined,
-      () => { /* file missing or load error: keep box placeholder */ }
+      () => { /* file missing or load error: keep box */ }
     );
   }
 
@@ -198,13 +252,16 @@ export class PlaneScene {
   startPlaneEffect(
     _provinceName: string,
     planeCount: number,
-    targetScreenX: number,
-    targetScreenY: number
+    _targetScreenX: number,
+    _targetScreenY: number
   ): void {
     if (!this.container) return;
     const count = Math.min(planeCount, MAX_INSTANCES);
     this.hideIdleBecauseZeroVisitor = count === 0;
-    this.targetWorld.copy(this.screenToWorld(targetScreenX, targetScreenY, TARGET_DISTANCE));
+    const rect = this.container.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    this.targetWorld.copy(this.screenToWorld(centerX, centerY, TARGET_DISTANCE));
 
     for (let i = 0; i < count; i++) {
       this.startPositions[i].copy(this.randomRingStart());
@@ -226,8 +283,14 @@ export class PlaneScene {
       this.animationId = null;
     }
     window.removeEventListener('resize', this.boundResize);
-    this.planeMesh.geometry.dispose();
-    (this.planeMesh.material as THREE.Material).dispose();
+    this.planeMesh.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.geometry) obj.geometry.dispose();
+      if (obj instanceof THREE.Mesh && obj.material) {
+        const m = obj.material as THREE.Material | THREE.Material[];
+        if (Array.isArray(m)) m.forEach((mat) => mat.dispose());
+        else m.dispose();
+      }
+    });
     this.instancedMesh.geometry.dispose();
     (this.instancedMesh.material as THREE.Material).dispose();
     this.renderer.dispose();

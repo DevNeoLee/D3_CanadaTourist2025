@@ -105,6 +105,7 @@ export class DashboardController {
         this.barChart.render(sortedData),
         this.pieChart.render(sortedData, totalVisitors)
       ]);
+      this.connectMapHoverToPlaneEffect();
 
     } catch (error) {
       console.error('Error updating charts:', error);
