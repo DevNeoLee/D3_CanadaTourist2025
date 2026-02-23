@@ -43,10 +43,16 @@ export class PlaneScene {
   /** When true, we are hovering a 0-visitor province: hide idle plane so there is no plane effect at all. */
   private hideIdleBecauseZeroVisitor: boolean = false;
   private dummy: THREE.Object3D = new THREE.Object3D();
+  /** Resolves when plane.glb has finished loading (success or error). Used so loading spinner stays until 3D model is ready. */
+  private planeModelLoadedResolve: (() => void) | null = null;
+  public readonly whenPlaneModelLoaded: Promise<void>;
 
   constructor(options: PlaneSceneOptions = {}) {
     this.width = options.width ?? 400;
     this.height = options.height ?? 300;
+    this.whenPlaneModelLoaded = new Promise<void>((resolve) => {
+      this.planeModelLoadedResolve = resolve;
+    });
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xffffff);
@@ -193,9 +199,15 @@ export class PlaneScene {
         }
 
         console.log('[PlaneScene] loaded plane.glb (all ' + meshes.length + ' meshes, fly-in uses full multi-layer look)');
+        this.planeModelLoadedResolve?.();
+        this.planeModelLoadedResolve = null;
       },
       undefined,
-      () => { /* file missing or load error: keep box */ }
+      () => {
+        /* file missing or load error: keep box */
+        this.planeModelLoadedResolve?.();
+        this.planeModelLoadedResolve = null;
+      }
     );
   }
 

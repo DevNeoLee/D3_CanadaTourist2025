@@ -74,6 +74,11 @@ export class DashboardController {
       this.initPlaneScene();
       this.connectMapHoverToPlaneEffect();
 
+      // Wait for 3D plane model (plane.glb) to finish loading so spinner stays until it's ready
+      if (this.planeScene) {
+        await this.planeScene.whenPlaneModelLoaded;
+      }
+
       // Update info display
       this.updateInfoDisplay();
       this.updateLoadingProgress(100);
