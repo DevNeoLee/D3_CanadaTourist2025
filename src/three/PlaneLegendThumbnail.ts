@@ -112,6 +112,8 @@ export function mountPlaneLegendThumbnail(container: HTMLElement): Promise<() =>
           : (mat as THREE.Material).clone();
         group.add(new THREE.Mesh(geo, material));
       }
+      group.rotation.y = -Math.PI / 4; /* -45° */
+
       scene.add(group);
       renderer.render(scene, camera);
     },
