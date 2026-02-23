@@ -2,6 +2,7 @@ import * as d3 from 'd3';
 import { TouristData, CityData, MapData, ProvinceData } from '../types';
 import { BaseChart } from './BaseChart';
 import { MAP_COLOR_SCALE, MAP_PROJECTION_CONFIG, CHART_DIMENSIONS } from '../constants';
+import { mountPlaneLegendThumbnail } from '../three/PlaneLegendThumbnail';
 
 /** Callback when user hovers a province: (provinceName, visitorValue, planeCount, targetScreenX, targetScreenY). */
 export type OnProvinceHoverCallback = (name: string, value: number, planeCount: number, screenX: number, screenY: number) => void;
@@ -18,17 +19,25 @@ export class MapChart extends BaseChart {
   private mapDataCache: MapData | null = null;
   /** Single load promise so concurrent renders don't trigger duplicate fetches. */
   private staticDataLoadPromise: Promise<[CityData[], MapData]> | null = null;
+  /** Cleanup for the 3D plane thumbnail in the legend. */
+  private planeThumbnailDispose: (() => void) | null = null;
 
   constructor() {
     super('.mapWrap', CHART_DIMENSIONS.map);
     this.projection = d3.geoMercator()
       .scale(MAP_PROJECTION_CONFIG.scale)
       .translate(MAP_PROJECTION_CONFIG.translate as [number, number]);
-    
     this.path = d3.geoPath().projection(this.projection);
     this.colorScale = d3.scaleThreshold<number, string>()
       .domain(MAP_COLOR_SCALE.domain)
       .range(MAP_COLOR_SCALE.range);
+  }
+
+  public clear(): void {
+    this.planeThumbnailDispose?.();
+    this.planeThumbnailDispose = null;
+    d3.select(this.container).selectAll('.mapLegendColumn').remove();
+    super.clear();
   }
 
   /**
@@ -100,6 +109,12 @@ export class MapChart extends BaseChart {
       // Draw legend
       this.drawLegend();
 
+      // Mount small 3D plane thumbnail in the legend (replaces static image)
+      this.planeThumbnailDispose?.();
+      const thumbEl = d3.select(this.container).select('.planeScaleLegend-thumb').node();
+      if (thumbEl instanceof HTMLElement) {
+        this.planeThumbnailDispose = await mountPlaneLegendThumbnail(thumbEl);
+      }
     } catch (error) {
       console.error('Error rendering map chart:', error);
     }
@@ -240,8 +255,23 @@ export class MapChart extends BaseChart {
   }
 
   private drawLegend(): void {
+    const mapWrap = d3.select('.mapWrap');
+    // Wrapper column: plane scale legend on top, Tourists color scale below (keeps "10K/1 plane" right above the scale)
+    const legendColumn = mapWrap.append('div').attr('class', 'mapLegendColumn');
+
+    // Plane scale legend: 10K visitors = 1 plane
+    const planeLegend = legendColumn.append('div')
+      .attr('class', 'planeScaleLegend')
+      .attr('aria-label', 'Plane scale: 10,000 tourists per plane');
+    planeLegend.append('span')
+      .attr('class', 'planeScaleLegend-text')
+      .text('10K Tourists: ');
+    planeLegend.append('div')
+      .attr('class', 'planeScaleLegend-thumb')
+      .attr('aria-hidden', 'true');
+
     // Legend for large screens
-    const legendLarge = d3.select('.mapWrap')
+    const legendLarge = legendColumn
       .append('svg')
       .attr('width', '130')
       .attr('height', '505')
@@ -275,7 +305,7 @@ export class MapChart extends BaseChart {
       .text('Tourists');
 
     // Legend for small screens
-    const legendSmall = d3.select('.mapWrap')
+    const legendSmall = legendColumn
       .append('svg')
       .attr('width', '600')
       .attr('height', '140')

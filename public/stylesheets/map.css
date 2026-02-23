@@ -1,3 +1,44 @@
+/* Column wrapper: plane scale legend on top, Tourists scale below */
+.mapLegendColumn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0px; /* close to the other legend */
+    flex-shrink: 0;
+    margin-left: -20px; /* pull legends slightly closer to map */
+}
+
+/* Plane scale legend: 10K tourists = 1 plane, sits right above the Tourists scale */
+.planeScaleLegend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0px;
+    margin: 0;
+    font-size: 13px;
+    color: #333;
+}
+
+/* Container for small 3D plane thumbnail (canvas from PlaneLegendThumbnail) */
+.planeScaleLegend-thumb {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.planeScaleLegend-thumb canvas {
+    display: block;
+    width: 36px;
+    height: 36px;
+}
+
+.planeScaleLegend-text {
+    white-space: nowrap;
+}
+
 /* Map + legend: keep within viewport so right-side scale is not cut off on smaller screens */
 .mapWrap {
     margin: 0 auto;
@@ -30,10 +71,16 @@
 }
 
 @media only screen and (min-width: 900px) {
+    /* Push whole legend column down so plane legend sits level with map, right above Tourists scale */
+    .mapLegendColumn {
+        padding-top: 50px;
+    }
+
     .legend2 {
-        padding-top: 80px;
+        padding-top: 0;
         display: block;
-        margin-left: -28px; /* pull legend closer to map */
+        margin-left: 0;
+        margin-top: -56px; /* pull up toward plane legend so the two sit close */
     }
 
     .legend1 {
@@ -59,6 +106,7 @@
     }
 
     .legend2 {
-        margin-left: -28px;
+        margin-left: 0;
+        margin-top: -56px;
     }
 }
