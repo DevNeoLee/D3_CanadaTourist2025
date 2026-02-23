@@ -10,8 +10,12 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 const THUMB_SIZE = 36;
 const TARGET_PLANE_SIZE = 2.9;
 
+/** Cached plane group (clone) so we never refetch plane.glb on year/month change. */
+let cachedPlaneGroup: THREE.Group | null = null;
+
 /**
  * Mount a small 3D plane (plane.glb) into the given container. Returns a dispose function.
+ * plane.glb is loaded once and cached; subsequent mounts reuse the cache (no refetch).
  */
 export function mountPlaneLegendThumbnail(container: HTMLElement): Promise<() => void> {
   const width = THUMB_SIZE;
@@ -37,12 +41,6 @@ export function mountPlaneLegendThumbnail(container: HTMLElement): Promise<() =>
   dir.position.set(0.5, 2, 0.5);
   scene.add(dir);
 
-  const placeholder = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.05, 0.1),
-    new THREE.MeshNormalMaterial()
-  );
-  scene.add(placeholder);
-
   function dispose(): void {
     renderer.dispose();
     if (renderer.domElement.parentNode === container) {
@@ -59,6 +57,20 @@ export function mountPlaneLegendThumbnail(container: HTMLElement): Promise<() =>
       }
     });
   }
+
+  if (cachedPlaneGroup) {
+    const group = cachedPlaneGroup.clone(true);
+    group.rotation.y = -Math.PI / 4;
+    scene.add(group);
+    renderer.render(scene, camera);
+    return Promise.resolve(dispose);
+  }
+
+  const placeholder = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.05, 0.1),
+    new THREE.MeshNormalMaterial()
+  );
+  scene.add(placeholder);
 
   const loader = new GLTFLoader();
   loader.load(
@@ -115,6 +127,7 @@ export function mountPlaneLegendThumbnail(container: HTMLElement): Promise<() =>
       group.rotation.y = -Math.PI / 4; /* -45° */
 
       scene.add(group);
+      cachedPlaneGroup = group.clone(true);
       renderer.render(scene, camera);
     },
     undefined,
