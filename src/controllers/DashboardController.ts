@@ -54,8 +54,16 @@ export class DashboardController {
   public async initialize(): Promise<void> {
     try {
       this.updateLoadingProgress(10);
-      
-      // Load data
+
+      // Start plane.glb load as early as possible (in parallel with data) so plane is ready sooner
+      const planeContainer = document.getElementById('threeCanvasContainer');
+      this.planeScene = new PlaneScene({
+        width: planeContainer?.clientWidth ?? 400,
+        height: planeContainer?.clientHeight ?? 300,
+      });
+      this.planeScene.startLoadingModel();
+
+      // Load data (plane.glb fetch runs in parallel)
       await this.dataService.loadData();
       this.updateLoadingProgress(40);
       
@@ -77,17 +85,18 @@ export class DashboardController {
       // Wait for 3D plane model (plane.glb) to finish loading so spinner stays until it's ready
       if (this.planeScene) {
         await this.planeScene.whenPlaneModelLoaded;
+        this.planeScene.renderOneFrame();
       }
 
       // Update info display
       this.updateInfoDisplay();
       this.updateLoadingProgress(100);
-      
-      // Loading complete: hide overlay then focus chat so caret is active on load
-      setTimeout(() => {
+
+      // Hide overlay on next frame so plane canvas is painted with charts together
+      requestAnimationFrame(() => {
         this.hideLoading();
         this.focusChatInput();
-      }, 500);
+      });
       console.log('dataService: ', this.dataService)
     } catch (error) {
       console.error('Failed to initialize dashboard:', error);
@@ -775,7 +784,10 @@ export class DashboardController {
   private initPlaneScene(): void {
     const container = document.getElementById('threeCanvasContainer');
     if (!container) return;
-    this.planeScene = new PlaneScene({ width: container.clientWidth || 400, height: container.clientHeight || 300 });
+    if (!this.planeScene) {
+      this.planeScene = new PlaneScene({ width: container.clientWidth || 400, height: container.clientHeight || 300 });
+      this.planeScene.startLoadingModel();
+    }
     this.planeScene.mount(container);
     this.planeScene.start();
   }

@@ -48,6 +48,8 @@ export class PlaneScene {
   /** Resolves when plane.glb has finished loading (success or error). Used so loading spinner stays until 3D model is ready. */
   private planeModelLoadedResolve: (() => void) | null = null;
   public readonly whenPlaneModelLoaded: Promise<void>;
+  /** Ensures loadPlaneModel() only starts once; allows early start before mount for faster first paint. */
+  private loadStarted = false;
 
   constructor(options: PlaneSceneOptions = {}) {
     this.width = options.width ?? 400;
@@ -115,6 +117,14 @@ export class PlaneScene {
     this.camera.updateProjectionMatrix();
     container.appendChild(this.renderer.domElement);
     window.addEventListener('resize', this.boundResize);
+    this.loadPlaneModel(); /* no-op if already started via startLoadingModel() */
+  }
+
+  /**
+   * Start loading plane.glb as early as possible (e.g. in parallel with data).
+   * Idempotent; safe to call before mount(). Call from controller at init start for faster plane ready.
+   */
+  public startLoadingModel(): void {
     this.loadPlaneModel();
   }
 
@@ -122,6 +132,8 @@ export class PlaneScene {
    * Load image/plane.glb; use ALL meshes so the full model (every layer) is shown.
    */
   private loadPlaneModel(): void {
+    if (this.loadStarted) return;
+    this.loadStarted = true;
     const loader = new GLTFLoader();
     loader.load(
       'image/plane.glb',
@@ -258,6 +270,14 @@ export class PlaneScene {
       this.renderer.render(this.scene, this.camera);
     };
     animate();
+  }
+
+  /**
+   * Render one frame so the plane is painted before the loading overlay is hidden.
+   * Ensures the plane appears at the same time as the charts.
+   */
+  public renderOneFrame(): void {
+    this.renderer.render(this.scene, this.camera);
   }
 
   /**

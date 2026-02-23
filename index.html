@@ -16,6 +16,8 @@
     
     <!-- Favicon -->
     <link rel="icon" href="image/blueplane_icon.svg">
+    <!-- Preload 3D plane so it can load in parallel with app init and appear sooner -->
+    <link rel="preload" href="image/plane.glb" as="fetch" crossorigin="">
     
     <!-- Meta tags for better SEO and social sharing -->
     <meta name="description" content="Interactive Canada tourism dashboard (D3.js, TypeScript) with AI chat: transformers.js browser LLM when offline, Groq API when online. 20 years of Statistics Canada data.">
