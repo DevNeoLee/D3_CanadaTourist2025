@@ -42,6 +42,8 @@ export class PlaneScene {
   private effectCount: number = 0;
   /** When true, we are hovering a 0-visitor province: hide idle plane so there is no plane effect at all. */
   private hideIdleBecauseZeroVisitor: boolean = false;
+  /** Once the user has hovered a province, idle plane stops spinning and stays still. */
+  private idleSpinStopped: boolean = false;
   private dummy: THREE.Object3D = new THREE.Object3D();
   /** Resolves when plane.glb has finished loading (success or error). Used so loading spinner stays until 3D model is ready. */
   private planeModelLoadedResolve: (() => void) | null = null;
@@ -217,6 +219,7 @@ export class PlaneScene {
       const now = performance.now();
 
       if (this.effectCount > 0) {
+        this.idleSpinStopped = true;
         const elapsed = now - this.effectStartTime;
         const effectDone = elapsed > STAGGER_MAX_MS + FLY_DURATION_MS;
         if (effectDone) {
@@ -243,8 +246,10 @@ export class PlaneScene {
           }
         }
       } else {
-        this.planeMesh.visible = !this.hideIdleBecauseZeroVisitor;
-        this.planeMesh.rotation.y += 0.008;
+        this.planeMesh.visible = !this.hideIdleBecauseZeroVisitor && !this.idleSpinStopped;
+        if (!this.idleSpinStopped) {
+          this.planeMesh.rotation.y += 0.008;
+        }
         for (const inst of this.instancedMeshes) {
           inst.count = 0;
         }
